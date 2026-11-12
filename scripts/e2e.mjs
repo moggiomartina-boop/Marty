@@ -309,6 +309,15 @@ for (const [h, name] of [
 }
 await mp.locator('.tabbar').getByRole('link', { name: 'Diario' }).click();
 ok(await mp.getByRole('heading', { level: 1, name: 'Diario' }).isVisible(), 'navigazione con barra mobile');
+await mp.locator('.tabbar').getByRole('link', { name: 'Situazioni' }).click();
+ok(await mp.getByRole('heading', { level: 1, name: 'Situazioni quotidiane' }).isVisible(), 'situazioni nella barra mobile');
+await mp.locator('.tabbar').getByRole('button', { name: 'Altro' }).click();
+await mp.waitForTimeout(500);
+await mp.screenshot({ path: `${SHOTS}/m11-altro.png` });
+for (const l of ['Il mio piano', 'Progressi', 'Chiedere aiuto', 'Sicurezza e aiuto', 'Bibliografia', 'Privacy e dati']) ok(await mp.locator('.sheet').getByText(l, { exact: true }).isVisible(), `menu Altro: ${l}`);
+await mp.locator('.sheet').getByText('Il mio piano', { exact: true }).click();
+ok(await mp.getByRole('heading', { level: 1, name: 'Il mio piano di cambiamento' }).isVisible(), 'piano dal menu Altro');
+ok(!(await mp.locator('.sheet').isVisible()), 'menu Altro si chiude dopo la scelta');
 
 await browser.close();
 if (errors.length) {

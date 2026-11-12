@@ -3,7 +3,7 @@
  * Rende l'app disponibile offline. Non tocca i dati personali:
  * diario e piano restano in localStorage, mai nella cache né in rete.
  */
-const CACHE = 'oltre-v3';
+const CACHE = 'oltre-v4';
 
 self.addEventListener('install', (event) => {
   // Precarica la pagina e le risorse principali elencate nell'HTML.
