@@ -18,6 +18,15 @@ npm run e2e        # verifica end-to-end con Playwright (richiede `npm run previ
 
 La build usa percorsi relativi e `HashRouter`: `dist/` può essere pubblicata su qualsiasi hosting statico, anche in una sottocartella.
 
+## App installabile (PWA)
+
+L’app è una Progressive Web App: pubblicata a un indirizzo https si installa sulla schermata Home di iPhone e Android, con la propria icona, si apre a schermo intero e funziona anche offline. Diario e piano restano in localStorage, mai nella cache del service worker né in rete.
+
+- Pubblicazione rapida: trascina `oltre-la-reazione-netlify.zip` (o la cartella `dist/`) su https://app.netlify.com/drop.
+- iPhone: apri l’indirizzo in Safari → Condividi → «Aggiungi alla schermata Home».
+- Android: Chrome propone «Installa app» (l’app mostra anche un pulsante dedicato).
+- `npm run icons` rigenera le icone da `scripts/icon.svg`; `npm run single-file` crea `oltre-la-reazione.html`, versione in un solo file per il desktop (senza installazione né offline).
+
 ## Contenuti
 
 Percorso di consapevolezza emotiva e responsabilità relazionale (gelosia, insicurezza, paura dell’abbandono, controllo, rabbia, fiducia), scritto in seconda persona.

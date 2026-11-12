@@ -1705,3 +1705,96 @@ svg {
     gap: 2px 14px;
   }
 }
+
+/* =========================================================
+   App installata (PWA) e rifiniture mobile
+   ========================================================= */
+
+/* Area sicura in alto (notch) quando l'app è aperta a schermo intero. */
+.app-header {
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+.app-header-inner {
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+@media (max-width: 899px) {
+  :root {
+    --header-h: 56px;
+  }
+  .brand-name {
+    font-size: 1.05rem;
+  }
+  .container {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  /* Niente evidenziazione grigia al tocco, bersagli ampi. */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabs button {
+    padding: 12px 12px;
+  }
+  .scene,
+  .card {
+    padding: 20px;
+  }
+  .hero {
+    padding: 32px 0 24px;
+  }
+}
+@media (display-mode: standalone) {
+  /* In modalità app il footer lungo non serve: resta raggiungibile dal menu. */
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+.install {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--white);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 10px 12px 14px;
+  animation: rise 0.35s var(--ease);
+  max-width: 520px;
+  margin: 0 auto;
+}
+@media (min-width: 900px) {
+  .install {
+    bottom: 20px;
+  }
+}
+.install-icon {
+  border-radius: 11px;
+  flex: none;
+}
+.install-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.install-text strong {
+  color: var(--petrol-900);
+  font-size: 0.92rem;
+}
+.ios-share {
+  display: inline-block;
+  padding: 0 4px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  font-size: 0.75rem;
+}

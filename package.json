@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "single-file": "npm run build && node scripts/single-file.cjs",
+    "icons": "node scripts/make-icons.cjs"
   },
   "dependencies": {
     "react": "^18.3.1",

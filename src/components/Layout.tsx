@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useStore } from '../store/AppStore';
 import { BrandMark, Icon } from './Icon';
+import { InstallPrompt } from './InstallPrompt';
 
 const nav = [
   { to: '/', label: 'Inizio', end: true },
@@ -76,6 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </footer>
       </main>
+      <InstallPrompt />
       <nav className="tabbar no-print" aria-label="Navigazione rapida">
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={'end' in t ? t.end : undefined}>
