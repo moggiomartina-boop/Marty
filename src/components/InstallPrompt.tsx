@@ -62,7 +62,7 @@ export function InstallPrompt() {
         <strong>Installa Oltre la reazione</strong>
         {ios ? (
           <span>
-            In Safari tocca <span className="ios-share" aria-label="Condividi">⬆︎</span> Condividi, poi «Aggiungi alla schermata Home».
+            In Safari tocca <span className="ios-share" aria-label="Condividi">⬆︎</span> Condividi (nelle versioni più recenti è nel menu ≡ accanto all’indirizzo), poi «Aggiungi alla schermata Home».
           </span>
         ) : (
           <span>Aggiungila alla schermata Home: si apre come un’app e funziona anche offline.</span>
