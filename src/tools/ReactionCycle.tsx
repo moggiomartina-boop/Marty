@@ -3,7 +3,7 @@ import { cycleSteps } from '../content/cycle';
 import { Icon } from '../components/Icon';
 import { useStore } from '../store/AppStore';
 import { useToast } from '../components/Toast';
-import { uid } from '../utils/format';
+import { blankEntry } from './SaveToJournal';
 import { useNavigate } from 'react-router-dom';
 
 const colors = ['#1f4e5a', '#2f6b78', '#566f56', '#7f9a7e', '#a3875a', '#c27e66', '#9c5a44'];
@@ -38,22 +38,19 @@ export function ReactionCycle() {
     dispatch({
       type: 'saveEntry',
       entry: {
-        id: uid(),
+        ...blankEntry(),
         createdAt: now,
         updatedAt: now,
-        title: 'Il mio ciclo della reazione',
-        situation: mine.innesco ?? '',
-        facts: mine.innesco ?? '',
-        interpretation: mine.interpretazione ?? '',
-        emotions: [],
-        intensity: 5,
+        title: 'Il mio ciclo emotivo e comportamentale',
+        situation: mine.situazione ?? '',
+        facts: mine.situazione ?? '',
         body: mine.emozione ?? '',
+        interpretation: mine.pensiero ?? '',
         impulse: mine.impulso ?? '',
-        action: mine.azione ?? '',
+        action: mine.comportamento ?? '',
         impact: mine.effetto ?? '',
-        otherView: mine.risposta ?? '',
-        alternative: '',
-        lab: 'ciclo',
+        otherView: mine.conseguenza ?? '',
+        lab: 'mondo-interiore',
       },
     });
     dispatch({ type: 'useTool', tool: 'ciclo' });
@@ -82,7 +79,7 @@ export function ReactionCycle() {
         </div>
       </div>
       <div className="cycle-wrap">
-        <svg className="cycle-svg" viewBox="0 0 400 400" role="group" aria-label="Ciclo della reazione in sette tappe">
+        <svg className="cycle-svg" viewBox="0 0 400 400" role="group" aria-label="Ciclo emotivo e comportamentale in sette tappe">
           <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--line-2)" strokeWidth="2" strokeDasharray="4 6" />
           {cycleSteps.map((_, i) => {
             const a = pos(i);

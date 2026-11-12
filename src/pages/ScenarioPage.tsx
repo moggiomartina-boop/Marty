@@ -7,15 +7,21 @@ import { labById } from '../content/labs';
 import { findChoice, readPath, scenarioById, scenarios, styleDescription, styleLabel } from '../content/scenarios';
 import { useStore } from '../store/AppStore';
 import type { Scenario, ScenarioChoice } from '../types';
-import { formatDate, uid } from '../utils/format';
+import { formatDate } from '../utils/format';
 import { NotFoundPage } from './NotFoundPage';
+import { SafetyGate, SafetyNotice } from '../tools/Safety';
+import { blankEntry } from '../tools/SaveToJournal';
 
 export function ScenarioPage() {
   const { scenarioId = '' } = useParams();
   const s = scenarioById(scenarioId);
   if (!s) return <NotFoundPage message="Questo scenario non esiste." />;
   // key: riparte da zero cambiando scenario
-  return <Player key={s.id} scenario={s} />;
+  const player = <Player key={s.id} scenario={s} />;
+  // Le situazioni sul conflitto fisico sono "esercizi ordinari": sospese se la verifica segnala un rischio.
+  return s.lab === 'rabbia' ? <SafetyGate>{player}</SafetyGate> : (
+    player
+  );
 }
 
 interface Step {
@@ -62,20 +68,13 @@ function Player({ scenario: s }: { scenario: Scenario }) {
     dispatch({
       type: 'saveEntry',
       entry: {
-        id: uid(),
+        ...blankEntry(),
         createdAt: now,
         updatedAt: now,
-        title: `Scenario: ${s.title}`,
+        title: `Situazione: ${s.title}`,
         situation: s.context,
-        facts: '',
-        interpretation: '',
-        emotions: [],
-        intensity: 5,
-        body: '',
-        impulse: '',
         action: steps.map((x, i) => `${i + 1}. ${x.choice.label}`).join('\n'),
         impact: steps.map((x) => x.choice.otherSide).join('\n'),
-        otherView: '',
         alternative: reflection,
         lab: s.lab,
       },
@@ -87,12 +86,12 @@ function Player({ scenario: s }: { scenario: Scenario }) {
   return (
     <div className={`container accent-${lab.accent}`}>
       <nav className="breadcrumb" style={{ paddingTop: 24 }} aria-label="Percorso">
-        <Link to="/scenari">Scenari</Link> /{' '}
+        <Link to="/scenari">Situazioni</Link> /{' '}
         <Link to={`/laboratori/${lab.id}?tab=scenari`}>
           Laboratorio {lab.number} · {lab.title}
         </Link>
       </nav>
-      <PageHead eyebrow={`Scenario · ${s.relation}`} title={s.title} />
+      <PageHead eyebrow={`Situazione · Laboratorio ${lab.number}`} title={s.title} />
 
       <div className="read">
         <div className="scene" style={{ marginBottom: 20 }}>
@@ -115,7 +114,7 @@ function Player({ scenario: s }: { scenario: Scenario }) {
         {node && (
           <section className="scene fade-in" key={node.id} aria-live="polite">
             <span className="eyebrow">
-              Momento {steps.length + 1} di 2
+              Momento {steps.length + 1} di 2 · {node.choices.length} risposte possibili
             </span>
             <h2 style={{ fontSize: '1.35rem' }}>{node.text}</h2>
             <div className="choice-list" style={{ marginTop: 16 }}>
@@ -140,14 +139,19 @@ function Player({ scenario: s }: { scenario: Scenario }) {
                 </span>
                 <div className="two">
                   <div className="side">
-                    <strong>Che cosa succede in te</strong>
+                    <strong>Che cosa succede in questa risposta</strong>
                     {pending.feedback}
                   </div>
                   <div className="side">
-                    <strong>Che cosa arriva all’altro</strong>
+                    <strong>Che cosa può vivere lei</strong>
                     {pending.otherSide}
                   </div>
                 </div>
+                {pending.safety && (
+                  <div style={{ marginTop: 14 }}>
+                    <SafetyNotice />
+                  </div>
+                )}
                 <div className="row" style={{ marginTop: 16 }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => setPending(null)}>
                     Scegli un’altra risposta
@@ -178,7 +182,7 @@ function Player({ scenario: s }: { scenario: Scenario }) {
                         {styleLabel[x.choice.style]} · {x.choice.feedback}
                       </p>
                       <p className="small" style={{ margin: 0 }}>
-                        <strong>All’altro:</strong> {x.choice.otherSide}
+                        <strong>Per lei:</strong> {x.choice.otherSide}
                       </p>
                     </div>
                   </div>
@@ -204,7 +208,7 @@ function Player({ scenario: s }: { scenario: Scenario }) {
               </button>
               <span className="spacer" />
               <Link to={`/scenari/${nextScenario.id}`} className="btn">
-                Scenario successivo <Icon name="arrowRight" />
+                Situazione successiva <Icon name="arrowRight" />
               </Link>
             </div>
           </section>

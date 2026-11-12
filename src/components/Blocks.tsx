@@ -23,6 +23,12 @@ export function Blocks({ blocks }: { blocks: Block[] }) {
                 {b.items?.map((it) => <li key={it}>{it}</li>)}
               </ul>
             );
+          case 'warning':
+            return (
+              <div key={i} className="warning-block" role="note">
+                {b.text}
+              </div>
+            );
           case 'note':
             return (
               <div key={i} className="note" role="note">

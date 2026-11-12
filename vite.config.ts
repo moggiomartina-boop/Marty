@@ -5,5 +5,16 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: './',
+  build: {
+    rollupOptions: {
+      output: {
+        // Contenuti editoriali e librerie in file separati: meglio in cache, bundle principale più leggero.
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor';
+          if (id.includes('/src/content/')) return 'contenuti';
+        },
+      },
+    },
+  },
   test: { globals: true, environment: 'jsdom' },
 });

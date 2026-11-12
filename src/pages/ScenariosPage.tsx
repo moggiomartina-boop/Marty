@@ -4,41 +4,41 @@ import { PageHead } from '../components/Layout';
 import { labs } from '../content/labs';
 import { scenarios } from '../content/scenarios';
 import { useStore } from '../store/AppStore';
-import type { Scenario } from '../types';
-
-const relations: Scenario['relation'][] = ['coppia', 'famiglia', 'lavoro', 'amicizia'];
 
 export function ScenariosPage() {
   const { data } = useStore();
-  const [rel, setRel] = useState<string>('tutte');
-  const list = scenarios.filter((s) => rel === 'tutte' || s.relation === rel);
+  const [lab, setLab] = useState<string>('tutti');
+  const withScenarios = labs.filter((l) => scenarios.some((s) => s.lab === l.id));
+  const list = scenarios.filter((s) => lab === 'tutti' || s.lab === lab);
   const done = scenarios.filter((s) => data.progress.scenarios[s.id]?.length).length;
   return (
     <div className="container">
       <PageHead
-        eyebrow={`${scenarios.length} scenari ramificati · ${done} esplorati`}
-        title="Scenari"
-        lead="Situazioni quotidiane in cui ogni scelta cambia la risposta dell’altra persona e il finale. Osserva che cosa provoca ogni mossa: dentro di te e nell’altro."
+        eyebrow={`${scenarios.length} situazioni ramificate · ${done} esplorate`}
+        title="Situazioni quotidiane"
+        lead="Un simulatore di momenti comuni nelle relazioni. Ogni situazione ha quattro risposte possibili e si ramifica: ogni scelta cambia ciò che vive lei e come può finire. Non ci sono punteggi: ci sono conseguenze da osservare."
       />
-      <div className="chips" role="radiogroup" aria-label="Filtra per relazione" style={{ marginBottom: 24 }}>
-        {['tutte', ...relations].map((r) => (
-          <button key={r} className="chip" role="radio" aria-checked={rel === r} onClick={() => setRel(r)}>
-            {r}
+      <div className="chips" role="radiogroup" aria-label="Filtra per laboratorio" style={{ marginBottom: 24 }}>
+        <button className="chip chip-sm" role="radio" aria-checked={lab === 'tutti'} onClick={() => setLab('tutti')}>
+          Tutte
+        </button>
+        {withScenarios.map((l) => (
+          <button key={l.id} className="chip chip-sm" role="radio" aria-checked={lab === l.id} onClick={() => setLab(l.id)}>
+            {l.number}. {l.title}
           </button>
         ))}
       </div>
       <div className="grid grid-3">
         {list.map((s) => {
-          const lab = labs.find((l) => l.id === s.lab)!;
+          const l = labs.find((x) => x.id === s.lab)!;
           const runs = data.progress.scenarios[s.id]?.length ?? 0;
           return (
-            <Link key={s.id} to={`/scenari/${s.id}`} className={`card card-link accent-${lab.accent}`}>
+            <Link key={s.id} to={`/scenari/${s.id}`} className={`card card-link accent-${l.accent}`}>
               <div className="row" style={{ marginBottom: 10 }}>
-                <span className="tag">{s.relation}</span>
                 <span className="tag" style={{ background: 'var(--accent-bg)', borderColor: 'transparent' }}>
-                  Lab {lab.number}
+                  Lab {l.number}
                 </span>
-                {runs > 0 && <span className="tag tag-sage tag-done">esplorato</span>}
+                {runs > 0 && <span className="tag tag-sage tag-done">esplorata</span>}
               </div>
               <h3>{s.title}</h3>
               <p className="muted small" style={{ margin: 0 }}>

@@ -49,7 +49,8 @@ export function DataPage() {
           <li>Il piano personale {data.plan.updatedAt ? '(compilato)' : '(vuoto)'}</li>
           <li>{Object.keys(data.progress.exercises).length} esercizi completati con le relative risposte</li>
           <li>{Object.keys(data.progress.scenarios).length} scenari esplorati e i percorsi scelti</li>
-          <li>Sezioni lette e strumenti usati</li>
+          <li>Risposte all’autoriflessione, sezioni lette e strumenti usati</li>
+          <li>L’esito della verifica di sicurezza e il tuo piano di uscita, se compilati</li>
         </ul>
         <p className="small muted" style={{ margin: 0 }}>
           Spazio occupato: circa {(size / 1024).toFixed(1)} KB, nella memoria locale del browser (localStorage). Se cancelli i dati di navigazione
@@ -100,7 +101,7 @@ export function DataPage() {
         danger
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
-          data.journal.forEach((e) => dispatch({ type: 'deleteEntry', id: e.id }));
+          dispatch({ type: 'deleteAllEntries' });
           setConfirm(null);
           toast('Diario eliminato');
         }}
@@ -120,7 +121,7 @@ export function DataPage() {
           toast('Tutti i dati sono stati eliminati');
         }}
       >
-        Diario, piano, risposte agli esercizi e progressi verranno cancellati da questo dispositivo. L’operazione non si può annullare.
+        Diario, piano, risposte agli esercizi, verifica di sicurezza e progressi verranno cancellati da questo dispositivo. L’operazione non si può annullare.
       </ConfirmDialog>
       <ConfirmDialog
         open={typeof confirm === 'object' && confirm !== null}

@@ -41,7 +41,7 @@ export function ProgressRing({
   const c = 2 * Math.PI * r;
   const v = Math.max(0, Math.min(1, value));
   return (
-    <div style={{ position: 'relative', width: size, height: size }} role="img" aria-label={label ?? `${Math.round(v * 100)}% completato`}>
+    <div style={{ position: 'relative', width: size, height: size, flex: 'none' }} role="img" aria-label={label ?? `${Math.round(v * 100)}% completato`}>
       <svg width={size} height={size} className="ring">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={trackColor} strokeWidth={stroke} />
         <circle

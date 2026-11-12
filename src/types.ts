@@ -1,25 +1,26 @@
 /**
  * Modello dei dati di "Oltre la reazione".
  * I contenuti (laboratori, scenari, esercizi) sono statici e tipizzati;
- * i dati personali (diario, piano, progressi) vivono solo in localStorage.
+ * i dati personali (diario, piano, progressi, verifica di sicurezza)
+ * vivono solo in localStorage sul dispositivo.
  */
 
 export type LabId =
-  | 'emozioni'
-  | 'corpo'
-  | 'fatti'
-  | 'ciclo'
-  | 'prospettive'
-  | 'impatto'
-  | 'radici'
-  | 'parole'
-  | 'confini';
+  | 'mondo-interiore'
+  | 'storie'
+  | 'fiducia'
+  | 'controllo'
+  | 'rabbia'
+  | 'altra-persona'
+  | 'due-bisogni'
+  | 'reagire'
+  | 'comportamenti';
 
-/** Natura di un'affermazione: aiuta a distinguere modelli, evidenze e ipotesi. */
+/** Natura di un'affermazione: distingue evidenze, modelli e ipotesi. */
 export type EvidenceKind = 'modello' | 'evidenza' | 'ipotesi' | 'pratica';
 
 export interface Block {
-  kind: 'p' | 'quote' | 'list' | 'note' | 'evidence';
+  kind: 'p' | 'quote' | 'list' | 'note' | 'evidence' | 'warning';
   text?: string;
   items?: string[];
   evidence?: EvidenceKind;
@@ -32,7 +33,51 @@ export interface LabSection {
   blocks: Block[];
 }
 
-export type ToolId = 'emozioni' | 'respiro' | 'fatti' | 'ciclo' | 'prospettive' | 'impatto' | 'riparazione';
+/**
+ * Ogni concetto psicologico è spiegato secondo sette passaggi fissi:
+ * che cos'è, come funziona, perché può svilupparsi, come si manifesta,
+ * conseguenze, interpretazioni alternative, comportamenti alternativi.
+ */
+export interface Concept {
+  id: string;
+  name: string;
+  what: string;
+  how: string;
+  why: string;
+  daily: string;
+  consequences: string;
+  altReadings: string;
+  altActions: string;
+  evidence?: EvidenceKind;
+  source?: string;
+}
+
+export interface Example {
+  title: string;
+  text: string;
+}
+
+/** Domanda di autoriflessione con feedback diverso per ogni risposta. */
+export interface SelfCheckItem {
+  id: string;
+  question: string;
+  options: { label: string; feedback: string }[];
+}
+
+export type ToolId =
+  | 'sentire'
+  | 'ciclo'
+  | 'storie'
+  | 'fiducia'
+  | 'controllo'
+  | 'protocollo'
+  | 'respiro'
+  | 'circolo'
+  | 'prospettive'
+  | 'bisogni'
+  | 'riparazione'
+  | 'cassetta'
+  | 'promesse';
 
 export interface Lab {
   id: LabId;
@@ -42,26 +87,35 @@ export interface Lab {
   question: string;
   summary: string;
   accent: 'petrol' | 'sage' | 'sand' | 'terracotta';
-  sections: LabSection[];
+  intro: string[];
+  sections: LabSection[]; // meccanismi coinvolti
+  concepts: Concept[];
+  examples: Example[];
+  selfCheck: SelfCheckItem[];
+  reflection: string[]; // domande aperte
+  science: Block[]; // approfondimento scientifico
   keyIdeas: string[];
-  reflection: string[];
-  tool?: ToolId;
+  tools: ToolId[];
   sources: string[];
 }
 
 /* ---------- Scenari ramificati ---------- */
 
-/** Qualità della risposta: NON è un giudizio morale, descrive la funzione della mossa. */
-export type ChoiceStyle = 'impulsiva' | 'evitante' | 'consapevole';
+/**
+ * Funzione della risposta. NON è un giudizio sulla persona:
+ * descrive che cosa fa quella mossa nella relazione.
+ */
+export type ChoiceStyle = 'consapevole' | 'pressante' | 'controllante' | 'ritiro';
 
 export interface ScenarioChoice {
   id: string;
   label: string;
   style: ChoiceStyle;
   feedback: string;
-  /** Cosa probabilmente sente / pensa l'altra persona dopo questa mossa. */
-  otherSide: string;
-  next: string | null; // id del nodo successivo, null = fine
+  otherSide: string; // che cosa può vivere l'altra persona
+  next: string | null;
+  /** Mossa che comporta intimidazione o rischio fisico: mostra le indicazioni di sicurezza. */
+  safety?: boolean;
 }
 
 export interface ScenarioNode {
@@ -75,7 +129,6 @@ export interface Scenario {
   lab: LabId;
   title: string;
   context: string;
-  relation: 'coppia' | 'famiglia' | 'lavoro' | 'amicizia' | 'sé';
   start: string;
   nodes: ScenarioNode[];
   insight: string;
@@ -107,6 +160,8 @@ export interface Exercise {
   intro: string;
   steps: ExerciseStep[];
   closing: string;
+  /** Esercizio "ordinario" sospeso quando la verifica di sicurezza segnala un rischio. */
+  gated?: boolean;
 }
 
 /* ---------- Dati personali ---------- */
@@ -114,12 +169,19 @@ export interface Exercise {
 export type AnswerValue = string | string[] | number;
 
 export interface ScenarioRun {
-  path: string[]; // id delle scelte
+  path: string[];
   completedAt: string;
 }
 
 export interface ExerciseResult {
   answers: Record<string, AnswerValue>;
+  completedAt: string;
+}
+
+export interface ClassifierResult {
+  answered: number;
+  matching: number;
+  total: number;
   completedAt: string;
 }
 
@@ -131,6 +193,7 @@ export interface JournalEntry {
   situation: string;
   facts: string;
   interpretation: string;
+  fear: string;
   emotions: string[];
   intensity: number; // 0-10
   body: string;
@@ -148,24 +211,29 @@ export interface IfThen {
   then: string;
 }
 
+/** Piano personale: i campi seguono il laboratorio 9. */
 export interface PersonalPlan {
-  motivation: string;
-  values: string;
+  behavior: string;
   triggers: string[];
-  earlySignals: string[];
-  pauseStrategies: string[];
+  emotions: string[];
+  thoughts: string[];
+  alternative: string;
+  partnerLimit: string;
+  measures: string[];
+  relapse: string;
   ifThen: IfThen[];
-  repairPhrases: string[];
-  boundaries: string[];
   support: string;
   reviewDate: string;
   updatedAt: string | null;
 }
 
-export interface FactsResult {
-  correct: number;
-  total: number;
-  completedAt: string;
+export interface SafetyState {
+  /** Ultima verifica: almeno una risposta indica un rischio concreto. */
+  flagged: boolean;
+  checkedAt: string | null;
+  /** L'utente ha letto il protocollo e compilato il proprio piano di uscita. */
+  acknowledgedAt: string | null;
+  exitPlan: { where: string; who: string; message: string };
 }
 
 export interface Progress {
@@ -173,14 +241,17 @@ export interface Progress {
   readSections: string[]; // `${labId}/${sectionId}`
   scenarios: Record<string, ScenarioRun[]>;
   exercises: Record<string, ExerciseResult>;
-  tools: Partial<Record<ToolId, string>>; // data ultimo utilizzo
-  facts?: FactsResult;
+  tools: Partial<Record<ToolId, string>>;
+  selfChecks: Record<string, number>; // id domanda → indice risposta
+  classifiers: Record<string, ClassifierResult>;
+  helpOpened: string[];
 }
 
 export interface AppData {
-  version: 1;
+  version: 2;
   onboarded: boolean;
   progress: Progress;
   journal: JournalEntry[];
   plan: PersonalPlan;
+  safety: SafetyState;
 }

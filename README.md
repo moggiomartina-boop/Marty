@@ -20,23 +20,26 @@ La build usa percorsi relativi e `HashRouter`: `dist/` può essere pubblicata su
 
 ## Contenuti
 
-| # | Laboratorio | Strumento interattivo |
-|---|---|---|
-| 1 | Dare un nome a ciò che provi | Esploratore delle emozioni |
-| 2 | Il corpo arriva prima | Guida al respiro con misura prima/dopo |
-| 3 | Fatti e interpretazioni | Quiz fatto/interpretazione + riformulazione |
-| 4 | Il ciclo della reazione | Ciclo interattivo in 7 tappe (esplora / ricostruisci il tuo) |
-| 5 | Doppio punto di vista | Scena a due colonne + confronto |
-| 6 | Ciò che provochi | Intenzione e impatto di frasi frequenti |
-| 7 | Ferite antiche, reazioni presenti | — (solo esercizi esplorativi, nessuna diagnosi) |
-| 8 | Parole che riparano | Costruttore di riparazioni con verifica |
-| 9 | Confini e cura di sé | — (confini, sicurezza, numeri utili) |
+Percorso di consapevolezza emotiva e responsabilità relazionale (gelosia, insicurezza, paura dell’abbandono, controllo, rabbia, fiducia), scritto in seconda persona.
 
-- 18 scenari ramificati (2 per laboratorio), ciascuno con 3 scelte iniziali che portano a 3 rami distinti, feedback su sé e sull’altro per ogni scelta, lettura del percorso e storico.
-- 12 esercizi guidati a passi, con salvataggio e modifica delle risposte.
-- Diario con creazione, modifica, eliminazione, ricerca, filtro per emozione, esportazione e stampa.
-- Piano personale in 9 sezioni con salvataggio automatico, suggerimenti dagli esercizi, intenzioni “se… allora…”, stampa/PDF, esportazione Markdown e copia.
-- Progressi, bibliografia con distinzione tra tipi di fonte, pagina privacy (backup/import/eliminazione), pagina sicurezza.
+| # | Laboratorio | Strumenti interattivi |
+|---|---|---|
+| 1 | Il mondo dentro di te | «Che cosa stai provando davvero?» · ciclo emotivo e comportamentale |
+| 2 | Quando la mente costruisce una storia | Classificazione di fatti, interpretazioni, paure, conclusioni e impulsi (30 frasi) |
+| 3 | Amore, fiducia e libertà | Bugia / omissione / dimenticanza · fiducia o sorveglianza |
+| 4 | Dal bisogno al controllo | 10 situazioni × 3 modalità (sana, pressante, controllante) |
+| 5 | Quando arriva la rabbia | Verifica di sicurezza, protocollo in 7 passi, piano di uscita, respiro |
+| 6 | Cosa succede all’altra persona | Simulatore dei due circoli · doppio punto di vista |
+| 7 | Due bisogni, due responsabilità | Avere / comunicare / pretendere / rispettare · costruttore di riparazione |
+| 8 | Imparare a reagire diversamente | Cassetta di 9 strumenti con procedura guidata ed esercizio |
+| 9 | Dalle parole ai comportamenti | Promessa generica o cambiamento osservabile · piano personale |
+
+Ogni laboratorio ha: introduzione, meccanismi, concetti spiegati in 7 punti, esempi quotidiani, situazioni interattive, autoriflessione con feedback per ogni risposta, esercizi, approfondimento scientifico con etichette (evidenza / modello / ipotesi / pratica).
+
+- 24 situazioni ramificate, 4 risposte iniziali ciascuna e due rami di prosecuzione; feedback specifico su te e su di lei per ogni risposta.
+- Verifica di sicurezza: se segnala un rischio, gli esercizi e le situazioni ordinari del laboratorio 5 vengono sospesi finché non si legge il protocollo e si compila un piano di uscita.
+- Modulo «Potrebbe essere il momento di chiedere aiuto?» con 15 punti espandibili, messaggio conclusivo e spiegazione della psicoterapia.
+- Diario privato (crea, modifica, elimina, cerca, esporta, stampa), piano personale con gli 8 campi richiesti e verifica delle formulazioni vaghe (stampa/PDF, Markdown, copia), progressi, bibliografia, privacy (backup, importazione, eliminazione).
 
 ## Struttura
 
@@ -44,11 +47,11 @@ La build usa percorsi relativi e `HashRouter`: `dist/` può essere pubblicata su
 src/
   types.ts              modello dei dati
   content/              contenuti editoriali (modificabili senza toccare la UI)
-    labs.ts             nove laboratori
-    scenarios/          18 scenari ramificati (part1–3) + logica di lettura del percorso
-    exercises.ts        esercizi guidati
+    labs/               nove laboratori (lab1-3, lab4-6, lab7-9)
+    scenarios/          24 situazioni ramificate (build.ts + data1–3) e lettura del percorso
+    exercises.ts        23 esercizi guidati
+    classifiers.ts, controlMatrix.ts, toolkit.ts, loops.ts, help.ts, emotions.ts, cycle.ts
     bibliography.ts     fonti
-    emotions.ts, cycle.ts, factsQuiz.ts, impactPhrases.ts
   store/                stato (reducer + context), persistenza, selettori di progresso
   tools/                strumenti interattivi dei laboratori
   components/           layout, icone, UI riutilizzabile

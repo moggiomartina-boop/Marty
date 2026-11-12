@@ -4,11 +4,13 @@ import { Icon } from '../components/Icon';
 import { PageHead } from '../components/Layout';
 import { useToast } from '../components/Toast';
 import { ConfirmDialog, ListEditor } from '../components/ui';
+import { allEmotionWords } from '../content/emotions';
 import { useStore } from '../store/AppStore';
 import { emptyPlan } from '../store/storage';
 import type { AnswerValue, IfThen, PersonalPlan } from '../types';
 import { exportPlan, planToMarkdown } from '../utils/export';
 import { formatDate, formatDateTime, uid } from '../utils/format';
+import { checkObservable } from '../utils/observable';
 
 const asList = (v: AnswerValue | undefined): string[] => (Array.isArray(v) ? v : typeof v === 'string' && v.trim() ? [v.trim()] : []);
 
@@ -16,19 +18,28 @@ const asList = (v: AnswerValue | undefined): string[] => (Array.isArray(v) ? v :
 function useSuggestions() {
   const { data } = useStore();
   const ex = data.progress.exercises;
-  const fromJournalAlternatives = data.journal.map((e) => e.alternative.trim()).filter((x) => x && x.length < 140);
+  const fromJournal = (k: 'interpretation' | 'impulse') => data.journal.map((e) => e[k].trim()).filter((x) => x && x.length < 120);
   return {
-    triggers: [...asList(ex['ciclo-personale']?.answers.innesco), ...asList(ex['confine']?.answers.situazione), ...asList(ex['vulnerabilita']?.answers.fattori)].slice(0, 8),
-    signals: [...asList(ex['mappa-corpo']?.answers.segnali), ...asList(ex['mappa-corpo']?.answers.primo)],
-    pauses: [
-      ...asList(ex['mappa-corpo']?.answers.strategia),
-      'respiro con espirazione lunga',
-      'dire: “Ho bisogno di una pausa di 20 minuti, poi ne parliamo”',
-      'uscire a camminare dieci minuti',
+    triggers: [...asList(ex['mappa-minaccia']?.answers.situazioni), ...asList(ex['mappa-escalation']?.answers.innesco)].slice(0, 10),
+    emotions: [...new Set([...asList(ex['mappa-minaccia']?.answers.emozione), ...data.journal.flatMap((e) => e.emotions)])].slice(0, 10),
+    thoughts: [...asList(ex['mappa-minaccia']?.answers.pensiero), ...asList(ex['tk-pensieri']?.answers.pensiero), ...fromJournal('interpretation')].slice(0, 6),
+    measures: [
+      'ogni domenica annoto quante volte ho chiesto conferme',
+      'segno nel diario ogni volta che resisto all’impulso di verificare',
+      'conto le discussioni interrotte con la pausa invece che con l’escalation',
     ],
-    repair: [...asList(ex['riparazione']?.answers['senza-ma']), ...fromJournalAlternatives].slice(0, 6),
-    boundaries: [...asList(ex['confine']?.answers.confine)],
   };
+}
+
+function ObservableHint({ text }: { text: string }) {
+  const c = checkObservable(text);
+  if (c.level === 'vuoto') return null;
+  const label = { generico: 'Promessa generica', parziale: 'In parte osservabile', osservabile: 'Cambiamento osservabile' }[c.level];
+  return (
+    <div className={`obs obs-${c.level}`} role="status">
+      <strong>{label}.</strong> {c.hints.join(' ')}
+    </div>
+  );
 }
 
 export function PlanPage() {
@@ -41,7 +52,7 @@ export function PlanPage() {
   const timer = useRef<number>();
   const lastExternal = useRef(data.plan);
 
-  // Allinea lo stato locale se il piano viene modificato altrove (es. dal costruttore di riparazioni o da un'altra scheda).
+  // Allinea lo stato locale se il piano viene modificato altrove (es. un'altra scheda).
   useEffect(() => {
     if (data.plan !== lastExternal.current && status === 'salvato') setPlan(data.plan);
     lastExternal.current = data.plan;
@@ -72,25 +83,15 @@ export function PlanPage() {
     }
   };
 
-  const filledSections = [
-    plan.motivation.trim(),
-    plan.values.trim(),
-    plan.triggers.length,
-    plan.earlySignals.length,
-    plan.pauseStrategies.length,
-    plan.ifThen.some((x) => x.when.trim() && x.then.trim()),
-    plan.repairPhrases.length,
-    plan.boundaries.length,
-    plan.support.trim(),
-  ].filter(Boolean).length;
+  const filled = [plan.behavior.trim(), plan.triggers.length, plan.emotions.length, plan.thoughts.length, plan.alternative.trim(), plan.partnerLimit.trim(), plan.measures.length, plan.relapse.trim()].filter(Boolean).length;
 
   return (
     <div className="container">
       <div className="no-print">
         <PageHead
-          eyebrow="Documento personale · salvato su questo dispositivo"
+          eyebrow="Laboratorio 9 · Documento personale, salvato solo su questo dispositivo"
           title="Il mio piano di cambiamento"
-          lead="Le intuizioni diventano utili quando si traducono in intenzioni concrete. Compila le sezioni con parole tue: puoi tornare a modificarle quando vuoi."
+          lead="Dalle parole ai comportamenti. Scrivi con parole tue che cosa vuoi interrompere, che cosa farai al suo posto e come te ne accorgerai. Il piano è per te: non serve mostrarlo a nessuno."
         >
           <div className="row" style={{ marginTop: 18 }}>
             <button className="btn" onClick={() => window.print()}>
@@ -107,41 +108,58 @@ export function PlanPage() {
             </span>
           </div>
           <p className="small muted" style={{ marginTop: 10 }}>
-            {filledSections} sezioni su 9 compilate
+            {filled} campi su 8 compilati · <Link to="/laboratori/comportamenti?tab=strumenti">Allenati a distinguere promesse e comportamenti</Link>
           </p>
         </PageHead>
 
         <div className="grid" style={{ gap: 18 }}>
-          <PlanCard n={1} title="Perché voglio cambiare" hint="Che cosa ti sta a cuore? Che cosa vorresti fosse diverso nelle tue relazioni?">
-            <textarea className="textarea" aria-label="Perché voglio cambiare" value={plan.motivation} onChange={(e) => update('motivation', e.target.value)} />
+          <PlanCard n={1} title="Il comportamento che voglio interrompere" hint="Descrivilo come lo vedrebbe una videocamera, senza addolcirlo. Per esempio: “Controllo il suo ultimo accesso più volte al giorno”.">
+            <textarea className="textarea" aria-label="Il comportamento che voglio interrompere" value={plan.behavior} onChange={(e) => update('behavior', e.target.value)} />
           </PlanCard>
-          <PlanCard n={2} title="I valori che voglio proteggere" hint="Per esempio: rispetto, vicinanza, onestà, calma, presenza per i miei figli.">
-            <textarea className="textarea" aria-label="Valori" value={plan.values} onChange={(e) => update('values', e.target.value)} />
+          <PlanCard n={2} title="Le situazioni che lo attivano" hint="Quando succede? Con chi? In quali condizioni (stanchezza, alcol, sera…)?">
+            <ListEditor label="Situazioni che lo attivano" items={plan.triggers} onChange={(v) => update('triggers', v)} placeholder="Es. quando esce con le amiche" suggestions={sug.triggers} />
           </PlanCard>
-          <PlanCard n={3} title="Le situazioni che mi attivano" hint="Inneschi ricorrenti: persone, momenti, temi, condizioni (stanchezza, fame…).">
-            <ListEditor label="Situazioni che mi attivano" items={plan.triggers} onChange={(v) => update('triggers', v)} placeholder="Es. quando mi sento interrotto/a" suggestions={sug.triggers} />
+          <PlanCard n={3} title="Le emozioni che provo" hint="Quelle in superficie e quelle sotto.">
+            <ListEditor label="Emozioni" items={plan.emotions} onChange={(v) => update('emotions', v)} placeholder="Es. paura di essere lasciato" suggestions={sug.emotions.length ? sug.emotions : allEmotionWords.slice(0, 8)} />
           </PlanCard>
-          <PlanCard n={4} title="I miei segnali precoci" hint="Ciò che nel corpo e nella mente annuncia che sto per reagire.">
-            <ListEditor label="Segnali precoci" items={plan.earlySignals} onChange={(v) => update('earlySignals', v)} placeholder="Es. mascella serrata" suggestions={sug.signals} />
+          <PlanCard n={4} title="I pensieri che lo precedono" hint="Le storie che la mente racconta appena prima del comportamento.">
+            <ListEditor label="Pensieri" items={plan.thoughts} onChange={(v) => update('thoughts', v)} placeholder="Es. “Se non risponde, è con qualcuno”" suggestions={sug.thoughts} />
           </PlanCard>
-          <PlanCard n={5} title="Come mi fermo" hint="Le strategie di pausa che funzionano per te. Ricorda: una pausa ha una durata e un ritorno.">
-            <ListEditor label="Strategie di pausa" items={plan.pauseStrategies} onChange={(v) => update('pauseStrategies', v)} placeholder="Es. esco a camminare 10 minuti" suggestions={sug.pauses} />
+          <PlanCard n={5} title="La risposta alternativa che voglio sperimentare" hint="Che cosa farai, in quale situazione, e come te ne accorgerai. Il riquadro sotto ti segnala se la formulazione è ancora una promessa generica.">
+            <textarea
+              className="textarea"
+              aria-label="La risposta alternativa"
+              placeholder="Es. Quando non risponde per più di un’ora, non le scriverò di nuovo: aspetterò e farò il grounding. Lo annoterò nel diario la sera."
+              value={plan.alternative}
+              onChange={(e) => update('alternative', e.target.value)}
+            />
+            <ObservableHint text={plan.alternative} />
+          </PlanCard>
+          <PlanCard n={6} title="Il limite dell’altra persona che devo rispettare" hint="Che cosa ti ha chiesto lei, o che cosa riconosci come suo diritto, anche se ti costa?">
+            <textarea className="textarea" aria-label="Il limite dell’altra persona" placeholder="Es. Il suo telefono è suo. Il suo tempo con le amiche è suo." value={plan.partnerLimit} onChange={(e) => update('partnerLimit', e.target.value)} />
+          </PlanCard>
+          <PlanCard n={7} title="Come misurerò concretamente i progressi" hint="Indicatori osservabili, non sensazioni. Che cosa conterai o annoterai?">
+            <ListEditor label="Misure dei progressi" items={plan.measures} onChange={(v) => update('measures', v)} placeholder="Es. quante volte a settimana chiedo conferme" suggestions={sug.measures} />
+          </PlanCard>
+          <PlanCard n={8} title="Che cosa farò se ricadrò nel comportamento precedente" hint="Una ricaduta va riconosciuta, non nascosta. Come la riparerai? Che cosa cambierai nel piano? A chi chiederai aiuto?">
+            <textarea className="textarea" aria-label="Che cosa farò se ricadrò" value={plan.relapse} onChange={(e) => update('relapse', e.target.value)} />
+            <ObservableHint text={plan.relapse} />
           </PlanCard>
           <PlanCard
-            n={6}
+            n={9}
             title="Se… allora…"
-            hint="Le intenzioni di implementazione collegano una situazione precisa a una risposta scelta in anticipo. La ricerca suggerisce che aumentino la probabilità di agire come si intende."
+            hint="Facoltativo. Collegare una situazione precisa a una risposta scelta in anticipo aumenta, secondo la ricerca, la probabilità di metterla in atto."
           >
             {plan.ifThen.map((x, i) => (
-              <div key={x.id} className="split" style={{ alignItems: 'end', marginBottom: 12, gridTemplateColumns: undefined }}>
+              <div key={x.id} className="split" style={{ alignItems: 'end', marginBottom: 12 }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor={`if-${x.id}`}>Se…</label>
-                  <input id={`if-${x.id}`} className="input" placeholder="mi accorgo che sto alzando la voce" value={x.when} onChange={(e) => updateIfThen(x.id, { when: e.target.value })} />
+                  <input id={`if-${x.id}`} className="input" placeholder="sento la gelosia salire mentre è fuori" value={x.when} onChange={(e) => updateIfThen(x.id, { when: e.target.value })} />
                 </div>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor={`then-${x.id}`}>…allora</label>
                   <div className="row" style={{ flexWrap: 'nowrap' }}>
-                    <input id={`then-${x.id}`} className="input" placeholder="dico che ho bisogno di 10 minuti e esco" value={x.then} onChange={(e) => updateIfThen(x.id, { then: e.target.value })} />
+                    <input id={`then-${x.id}`} className="input" placeholder="metto il telefono in un’altra stanza per 30 minuti" value={x.then} onChange={(e) => updateIfThen(x.id, { then: e.target.value })} />
                     <button className="btn btn-ghost icon-btn" aria-label={`Rimuovi intenzione ${i + 1}`} onClick={() => update('ifThen', plan.ifThen.filter((y) => y.id !== x.id))}>
                       <Icon name="close" />
                     </button>
@@ -153,17 +171,11 @@ export function PlanPage() {
               <Icon name="plus" /> Aggiungi un “se… allora…”
             </button>
           </PlanCard>
-          <PlanCard n={7} title="Frasi per riparare" hint="Parole pronte per quando ho ferito qualcuno. Puoi costruirle con lo strumento del laboratorio 8.">
-            <ListEditor label="Frasi per riparare" items={plan.repairPhrases} onChange={(v) => update('repairPhrases', v)} placeholder="Es. Ho alzato la voce e mi dispiace." suggestions={sug.repair} />
-            <Link to="/strumenti/riparazione" className="small">
-              Apri il costruttore di riparazioni →
+          <PlanCard n={10} title="Il mio supporto" hint="Facoltativo. Professionisti, servizi, persone di fiducia a cui puoi rivolgerti.">
+            <textarea className="textarea" aria-label="Il mio supporto" value={plan.support} onChange={(e) => update('support', e.target.value)} />
+            <Link to="/aiuto" className="small">
+              Potrebbe essere il momento di chiedere aiuto? →
             </Link>
-          </PlanCard>
-          <PlanCard n={8} title="I miei confini" hint="Ciò che farò io per proteggere ciò che conta. “Se…, allora io…”.">
-            <ListEditor label="Confini" items={plan.boundaries} onChange={(v) => update('boundaries', v)} placeholder="Es. Se ci sono insulti, interrompo la conversazione" suggestions={sug.boundaries} />
-          </PlanCard>
-          <PlanCard n={9} title="Il mio sostegno" hint="Persone, luoghi, professionisti a cui posso rivolgermi.">
-            <textarea className="textarea" aria-label="Il mio sostegno" value={plan.support} onChange={(e) => update('support', e.target.value)} />
           </PlanCard>
           <div className="card">
             <div className="field" style={{ marginBottom: 0 }}>
@@ -173,7 +185,11 @@ export function PlanPage() {
           </div>
         </div>
 
-        <div className="row" style={{ marginTop: 28 }}>
+        <div className="note" style={{ marginTop: 20 }}>
+          Questo piano è tuo. Non serve a dimostrare a lei che stai cambiando, né a chiederle qualcosa in cambio: i cambiamenti, se ci sono, si vedranno nei comportamenti.
+        </div>
+
+        <div className="row" style={{ marginTop: 20 }}>
           <button className="btn btn-danger" onClick={() => setConfirmReset(true)}>
             <Icon name="trash" /> Svuota il piano
           </button>
@@ -197,7 +213,7 @@ export function PlanPage() {
           toast('Piano svuotato');
         }}
       >
-        Tutte le sezioni verranno cancellate. Se vuoi conservarne una copia, esportalo prima.
+        Tutti i campi verranno cancellati. Se vuoi conservarne una copia, esportalo prima.
       </ConfirmDialog>
     </div>
   );
@@ -206,8 +222,8 @@ export function PlanPage() {
 function PlanCard({ n, title, hint, children }: { n: number; title: string; hint: string; children: ReactNode }) {
   return (
     <section className="card" aria-labelledby={`plan-${n}`}>
-      <div className="row" style={{ alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
-        <span style={{ fontFamily: 'var(--serif)', color: 'var(--terra-500)', fontSize: '1.3rem' }}>{n}</span>
+      <div className="row" style={{ alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'nowrap' }}>
+        <span style={{ fontFamily: 'var(--serif)', color: 'var(--terra-700)', fontSize: '1.3rem' }}>{n}</span>
         <h2 id={`plan-${n}`} style={{ fontSize: '1.25rem', margin: 0 }}>
           {title}
         </h2>
@@ -220,50 +236,55 @@ function PlanCard({ n, title, hint, children }: { n: number; title: string; hint
 
 /** Versione impaginata per la stampa (visibile solo in stampa). */
 function PrintablePlan({ plan }: { plan: PersonalPlan }) {
-  const L = ({ items }: { items: string[] }) => (items.length ? <ul>{items.map((i) => <li key={i}>{i}</li>)}</ul> : <p className="muted">—</p>);
+  const L = ({ items }: { items: string[] }) => (items.length ? <ul>{items.map((i) => <li key={i}>{i}</li>)}</ul> : <p>—</p>);
+  const P = ({ t }: { t: string }) => <p style={{ whiteSpace: 'pre-wrap' }}>{t || '—'}</p>;
+  const ifThen = plan.ifThen.filter((x) => x.when || x.then);
   return (
     <div className="print-only" aria-hidden="true">
       <p style={{ fontSize: '9pt', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Oltre la reazione — documento personale</p>
       <h1>Il mio piano di cambiamento</h1>
       {plan.updatedAt && <p>Aggiornato il {formatDate(plan.updatedAt)}</p>}
-      <h2>Perché voglio cambiare</h2>
-      <p style={{ whiteSpace: 'pre-wrap' }}>{plan.motivation || '—'}</p>
-      <h2>I valori che voglio proteggere</h2>
-      <p style={{ whiteSpace: 'pre-wrap' }}>{plan.values || '—'}</p>
-      <h2>Le situazioni che mi attivano</h2>
+      <h2>Il comportamento che voglio interrompere</h2>
+      <P t={plan.behavior} />
+      <h2>Le situazioni che lo attivano</h2>
       <L items={plan.triggers} />
-      <h2>I miei segnali precoci</h2>
-      <L items={plan.earlySignals} />
-      <h2>Come mi fermo</h2>
-      <L items={plan.pauseStrategies} />
-      <h2>Se… allora…</h2>
-      {plan.ifThen.filter((x) => x.when || x.then).length ? (
-        <ul>
-          {plan.ifThen
-            .filter((x) => x.when || x.then)
-            .map((x) => (
+      <h2>Le emozioni che provo</h2>
+      <L items={plan.emotions} />
+      <h2>I pensieri che lo precedono</h2>
+      <L items={plan.thoughts} />
+      <h2>La risposta alternativa che voglio sperimentare</h2>
+      <P t={plan.alternative} />
+      <h2>Il limite dell’altra persona che devo rispettare</h2>
+      <P t={plan.partnerLimit} />
+      <h2>Come misurerò concretamente i progressi</h2>
+      <L items={plan.measures} />
+      <h2>Che cosa farò se ricadrò</h2>
+      <P t={plan.relapse} />
+      {ifThen.length > 0 && (
+        <>
+          <h2>Se… allora…</h2>
+          <ul>
+            {ifThen.map((x) => (
               <li key={x.id}>
                 <strong>Se</strong> {x.when} <strong>allora</strong> {x.then}
               </li>
             ))}
-        </ul>
-      ) : (
-        <p>—</p>
+          </ul>
+        </>
       )}
-      <h2>Frasi per riparare</h2>
-      <L items={plan.repairPhrases} />
-      <h2>I miei confini</h2>
-      <L items={plan.boundaries} />
-      <h2>Il mio sostegno</h2>
-      <p style={{ whiteSpace: 'pre-wrap' }}>{plan.support || '—'}</p>
+      {plan.support && (
+        <>
+          <h2>Il mio supporto</h2>
+          <P t={plan.support} />
+        </>
+      )}
       {plan.reviewDate && (
         <p>
           <strong>Da rivedere il:</strong> {formatDate(plan.reviewDate)}
         </p>
       )}
       <p style={{ fontSize: '8pt', marginTop: '24pt' }}>
-        Questo piano è uno strumento di auto-osservazione e non sostituisce un percorso con un professionista. In caso di pericolo: 112 · Antiviolenza e
-        stalking: 1522.
+        Questo piano è uno strumento di auto-osservazione e non sostituisce un percorso con un professionista. In caso di pericolo immediato: 112.
       </p>
     </div>
   );

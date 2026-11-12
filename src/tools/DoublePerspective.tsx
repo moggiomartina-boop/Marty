@@ -78,7 +78,7 @@ export function DoublePerspective() {
               action: `Io avevo bisogno di: ${me.need}\nHo provato: ${me.feeling}`,
               otherView: `Ha visto: ${other.facts}\nPotrebbe aver provato: ${other.feeling}\nBisogno: ${other.need}\nTimore: ${other.fear}${check ? `\nDomanda da fare: ${check}` : ''}`,
               alternative: insight,
-              lab: 'prospettive',
+              lab: 'altra-persona',
             })}
             onSaved={() => {
               setScene('');

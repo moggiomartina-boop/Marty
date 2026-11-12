@@ -10,12 +10,16 @@ import { useStore } from '../store/AppStore';
 import type { AnswerValue, Exercise, ExerciseStep } from '../types';
 import { formatDate } from '../utils/format';
 import { NotFoundPage } from './NotFoundPage';
+import { SafetyGate } from '../tools/Safety';
 
 export function ExercisePage() {
   const { exerciseId = '' } = useParams();
   const ex = exerciseById(exerciseId);
   if (!ex) return <NotFoundPage message="Questo esercizio non esiste." />;
-  return <ExerciseRunner key={ex.id} ex={ex} />;
+  const runner = <ExerciseRunner key={ex.id} ex={ex} />;
+  return ex.gated ? <SafetyGate>{runner}</SafetyGate> : (
+    runner
+  );
 }
 
 const defaultValue = (s: ExerciseStep): AnswerValue => (s.type === 'chips' ? [] : s.type === 'scale' ? Math.round(((s.min ?? 0) + (s.max ?? 10)) / 2) : '');

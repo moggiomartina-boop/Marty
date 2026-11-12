@@ -6,6 +6,7 @@ import { AppStoreProvider } from './store/AppStore';
 import { BibliographyPage } from './pages/BibliographyPage';
 import { DataPage } from './pages/DataPage';
 import { ExercisePage } from './pages/ExercisePage';
+import { HelpPage } from './pages/HelpPage';
 import { HomePage, WelcomePage } from './pages/HomePage';
 import { JournalDetailPage, JournalEditorPage, JournalPage } from './pages/JournalPages';
 import { LabPage } from './pages/LabPage';
@@ -68,6 +69,7 @@ export function App() {
                 <Route path="/bibliografia" element={<BibliographyPage />} />
                 <Route path="/dati" element={<DataPage />} />
                 <Route path="/sicurezza" element={<SafetyPage />} />
+                <Route path="/aiuto" element={<HelpPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Layout>

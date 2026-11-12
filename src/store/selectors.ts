@@ -10,47 +10,56 @@ export interface LabProgress {
   scenariosTotal: number;
   exercisesDone: number;
   exercisesTotal: number;
-  toolUsed: boolean;
-  hasTool: boolean;
+  toolsUsed: number;
+  toolsTotal: number;
+  selfDone: number;
+  selfTotal: number;
   ratio: number;
 }
 
-/** Avanzamento di un laboratorio: letture, scenari, esercizi, strumento. */
+/**
+ * Avanzamento di un laboratorio: letture, autoriflessione, strumenti, scenari, esercizi.
+ * È un indicatore di esplorazione, non una valutazione.
+ */
 export function labProgress(data: AppData, lab: LabId): LabProgress {
   const l = labs.find((x) => x.id === lab)!;
-  const sectionsRead = l.sections.filter((s) => data.progress.readSections.includes(`${lab}/${s.id}`)).length;
+  const sectionKeys = ['intro', ...l.sections.map((s) => s.id), 'concetti', 'scienza'];
+  const sectionsRead = sectionKeys.filter((k) => data.progress.readSections.includes(`${lab}/${k}`)).length;
   const sc = scenarios.filter((s) => s.lab === lab);
   const scenariosDone = sc.filter((s) => (data.progress.scenarios[s.id]?.length ?? 0) > 0).length;
   const ex = exercises.filter((e) => e.lab === lab);
   const exercisesDone = ex.filter((e) => data.progress.exercises[e.id]).length;
-  const hasTool = !!l.tool;
-  const toolUsed = !!(l.tool && data.progress.tools[l.tool]);
-  const total = l.sections.length + sc.length + ex.length + (hasTool ? 1 : 0);
-  const done = sectionsRead + scenariosDone + exercisesDone + (toolUsed ? 1 : 0);
+  const toolsUsed = l.tools.filter((t) => data.progress.tools[t]).length;
+  const selfDone = l.selfCheck.filter((q) => data.progress.selfChecks[q.id] !== undefined).length;
+  const total = sectionKeys.length + sc.length + ex.length + l.tools.length + l.selfCheck.length;
+  const done = sectionsRead + scenariosDone + exercisesDone + toolsUsed + selfDone;
   return {
     sectionsRead,
-    sectionsTotal: l.sections.length,
+    sectionsTotal: sectionKeys.length,
     scenariosDone,
     scenariosTotal: sc.length,
     exercisesDone,
     exercisesTotal: ex.length,
-    toolUsed,
-    hasTool,
+    toolsUsed,
+    toolsTotal: l.tools.length,
+    selfDone,
+    selfTotal: l.selfCheck.length,
     ratio: total ? done / total : 0,
   };
 }
+
+/** Un laboratorio è considerato completato quando è stato esplorato almeno all'80%. */
+export const isLabCompleted = (data: AppData, lab: LabId) => labProgress(data, lab).ratio >= 0.8;
 
 export function overallProgress(data: AppData): number {
   const all = labs.map((l) => labProgress(data, l.id).ratio);
   return all.reduce((a, b) => a + b, 0) / all.length;
 }
 
-/** Suggerisce il prossimo laboratorio: il primo non completato, in ordine. */
 export function nextLab(data: AppData) {
-  return labs.find((l) => labProgress(data, l.id).ratio < 1) ?? null;
+  return labs.find((l) => !isLabCompleted(data, l.id)) ?? null;
 }
 
-/** Emozioni più frequenti nel diario (descrittivo, non valutativo). */
 export function topEmotions(data: AppData, n = 6): { word: string; count: number }[] {
   const m = new Map<string, number>();
   data.journal.forEach((e) => e.emotions.forEach((w) => m.set(w, (m.get(w) ?? 0) + 1)));
@@ -60,17 +69,15 @@ export function topEmotions(data: AppData, n = 6): { word: string; count: number
     .slice(0, n);
 }
 
-/** Numero di voci di diario per settimana, ultime `weeks` settimane. */
 export function journalByWeek(data: AppData, weeks = 8): { label: string; count: number }[] {
-  const now = new Date();
   const startOfWeek = (d: Date) => {
     const x = new Date(d);
-    const day = (x.getDay() + 6) % 7; // lunedì = 0
+    const day = (x.getDay() + 6) % 7;
     x.setHours(0, 0, 0, 0);
     x.setDate(x.getDate() - day);
     return x;
   };
-  const current = startOfWeek(now);
+  const current = startOfWeek(new Date());
   const buckets = Array.from({ length: weeks }, (_, i) => {
     const start = new Date(current);
     start.setDate(start.getDate() - (weeks - 1 - i) * 7);

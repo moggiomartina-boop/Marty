@@ -23,7 +23,7 @@ export function JournalPage() {
   const entries = data.journal;
   const usedEmotions = useMemo(() => [...new Set(entries.flatMap((e) => e.emotions))].sort(), [entries]);
   const filtered = entries.filter((e) => {
-    const text = [e.title, e.situation, e.facts, e.interpretation, e.action, e.alternative, e.otherView].join(' ').toLowerCase();
+    const text = [e.title, e.situation, e.facts, e.interpretation, e.fear, e.action, e.alternative, e.otherView].join(' ').toLowerCase();
     return (!q || text.includes(q.toLowerCase())) && (!emotion || e.emotions.includes(emotion));
   });
 
@@ -32,8 +32,11 @@ export function JournalPage() {
       <PageHead
         eyebrow="Privato · solo su questo dispositivo"
         title="Diario"
-        lead="Uno spazio per rallentare un episodio: separare i fatti da ciò che ti sei detto/a, nominare le emozioni, immaginare l’altra prospettiva."
+        lead="Uno spazio per rallentare un episodio: separare i fatti da ciò che ti sei detto, nominare le emozioni, immaginare come l’ha vissuta lei."
       >
+        <p className="small muted" style={{ marginTop: 10 }}>
+          Il diario è per te. Non serve a dimostrare nulla a nessuno e non è pensato per essere mostrato alla tua partner.
+        </p>
         <div className="row no-print" style={{ marginTop: 20 }}>
           <Link to="/diario/nuovo" className="btn">
             <Icon name="plus" /> Nuova voce
@@ -125,12 +128,13 @@ export function JournalPage() {
 const fields: { key: keyof JournalEntry; label: string }[] = [
   { key: 'situation', label: 'Situazione' },
   { key: 'facts', label: 'I fatti' },
-  { key: 'interpretation', label: 'Che cosa mi sono detto/a' },
+  { key: 'interpretation', label: 'Che cosa mi sono detto' },
+  { key: 'fear', label: 'Che cosa temevo' },
   { key: 'body', label: 'Nel corpo' },
   { key: 'impulse', label: 'Che cosa avrei voluto fare' },
   { key: 'action', label: 'Che cosa ho fatto' },
-  { key: 'impact', label: 'Effetto sull’altra persona' },
-  { key: 'otherView', label: 'Il punto di vista dell’altro' },
+  { key: 'impact', label: 'Effetto su di lei' },
+  { key: 'otherView', label: 'Come potrebbe averla vissuta lei' },
   { key: 'alternative', label: 'Un’alternativa possibile' },
 ];
 
@@ -226,6 +230,7 @@ const blank = (): JournalEntry => {
     situation: '',
     facts: '',
     interpretation: '',
+    fear: '',
     emotions: [],
     intensity: 5,
     body: '',
@@ -288,7 +293,7 @@ export function JournalEditorPage() {
       <PageHead
         eyebrow={existing ? 'Modifica voce' : 'Nuova voce'}
         title={existing ? 'Rileggi e modifica' : 'Che cosa è successo?'}
-        lead="Compila solo ciò che ti è utile. Nessun campo è obbligatorio, salvo almeno un contenuto."
+        lead="Compila solo ciò che ti è utile. Nessun campo è obbligatorio, salvo almeno un contenuto. Ciò che scrivi resta su questo dispositivo."
       />
       <form
         onSubmit={(e) => {
@@ -304,7 +309,8 @@ export function JournalEditorPage() {
         <h2 style={{ fontSize: '1.3rem', marginTop: 28 }}>1 · Fatti e interpretazioni</h2>
         {area('situation', 'Situazione', 'Dove eri, con chi, che cosa stava succedendo.')}
         {area('facts', 'I fatti', 'Solo ciò che una videocamera avrebbe registrato.')}
-        {area('interpretation', 'Che cosa mi sono detto/a', 'Il pensiero automatico, anche se ora ti sembra esagerato.')}
+        {area('interpretation', 'Che cosa mi sono detto', 'Il pensiero automatico, anche se ora ti sembra esagerato.')}
+        {area('fear', 'Che cosa temevo', 'La paura sotto il pensiero: di perdere, di non contare, di essere tradito…')}
 
         <h2 style={{ fontSize: '1.3rem', marginTop: 28 }}>2 · Emozioni e corpo</h2>
         <div className="field">
@@ -320,8 +326,8 @@ export function JournalEditorPage() {
         <h2 style={{ fontSize: '1.3rem', marginTop: 28 }}>3 · Reazione e impatto</h2>
         {area('impulse', 'Che cosa avrei voluto fare')}
         {area('action', 'Che cosa ho fatto o detto')}
-        {area('impact', 'Che effetto ha avuto sull’altra persona', 'Ciò che hai visto, e ciò che immagini.')}
-        {area('otherView', 'Come potrebbe averla vissuta l’altro', 'Un’ipotesi, non una certezza.')}
+        {area('impact', 'Che effetto ha avuto su di lei', 'Ciò che hai visto, e ciò che immagini.')}
+        {area('otherView', 'Come potrebbe averla vissuta lei', 'Un’ipotesi, non una certezza.')}
         {area('alternative', 'Un’alternativa possibile', 'Che cosa potresti fare o dire la prossima volta?')}
 
         <div className="field">

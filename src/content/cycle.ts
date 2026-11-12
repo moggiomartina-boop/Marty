@@ -1,4 +1,4 @@
-/** Le sette tappe del ciclo della reazione, con domande e possibilità di intervento. */
+/** Ciclo emotivo e comportamentale (laboratorio 1): sette tappe con esempio e punto di intervento. */
 export interface CycleStep {
   id: string;
   name: string;
@@ -10,67 +10,11 @@ export interface CycleStep {
 }
 
 export const cycleSteps: CycleStep[] = [
-  {
-    id: 'innesco',
-    name: 'Innesco',
-    short: 'Ciò che accade',
-    description: 'Un evento esterno (una frase, un ritardo, un silenzio) o interno (un ricordo, la stanchezza).',
-    question: 'Che cosa è successo, descritto come lo vedrebbe una videocamera?',
-    intervention: 'Prevenire quando possibile: scegliere momenti e luoghi, ridurre la vulnerabilità (sonno, fame, stanchezza).',
-    example: 'Il partner arriva 50 minuti in ritardo senza avvisare.',
-  },
-  {
-    id: 'interpretazione',
-    name: 'Interpretazione',
-    short: 'Ciò che mi dico',
-    description: 'Il significato che attribuiamo all’evento, spesso in modo rapido e automatico.',
-    question: 'Che cosa mi sto dicendo? Quali altre spiegazioni sono possibili?',
-    intervention: 'Separare fatti e interpretazioni; cercare almeno due ipotesi alternative.',
-    example: '“Non sono una priorità per lui.”',
-  },
-  {
-    id: 'emozione',
-    name: 'Emozione',
-    short: 'Ciò che sento',
-    description: 'La risposta emotiva e corporea, a volte più emozioni sovrapposte.',
-    question: 'Che emozione provo, con che intensità? C’è qualcosa sotto?',
-    intervention: 'Nominare l’emozione con precisione; notare i segnali del corpo; regolare l’attivazione.',
-    example: 'Rabbia in superficie, delusione e paura sotto. Calore al viso.',
-  },
-  {
-    id: 'impulso',
-    name: 'Impulso',
-    short: 'Ciò che vorrei fare',
-    description: 'La spinta all’azione che accompagna l’emozione. Non è ancora un’azione.',
-    question: 'Che cosa ho voglia di fare adesso? Mi avvicina a ciò che voglio davvero?',
-    intervention: 'Notare l’impulso senza eseguirlo subito; prendere tempo; fare una pausa dichiarata.',
-    example: 'Fare un commento sarcastico.',
-  },
-  {
-    id: 'azione',
-    name: 'Azione',
-    short: 'Ciò che faccio',
-    description: 'Il comportamento visibile: parole, tono, gesti, silenzi.',
-    question: 'Che cosa ho fatto o detto, concretamente?',
-    intervention: 'Scegliere una risposta coerente con i propri valori: esprimere il bisogno, chiedere, rimandare.',
-    example: '«Pensa la mia giornata, qui da sola come una cretina.»',
-  },
-  {
-    id: 'effetto',
-    name: 'Effetto sull’altro',
-    short: 'Ciò che provoco',
-    description: 'L’impatto del mio comportamento sull’altra persona, al di là delle mie intenzioni.',
-    question: 'Che cosa potrebbe aver sentito o pensato l’altro?',
-    intervention: 'Osservare i segnali dell’altro; chiedere; riconoscere l’impatto.',
-    example: 'Si sente attaccato appena arrivato.',
-  },
-  {
-    id: 'risposta',
-    name: 'Risposta dell’altro',
-    short: 'Ciò che torna indietro',
-    description: 'La reazione dell’altro, che diventa a sua volta un nuovo innesco per me.',
-    question: 'In che modo la sua risposta mi riattiva? Sta ricominciando il ciclo?',
-    intervention: 'Riconoscere il ciclo come “nostro”; riparare; uscire dalla ripetizione.',
-    example: '«Non posso nemmeno avere una giornata storta.» E il ciclo riparte.',
-  },
+  { id: 'situazione', name: 'Situazione', short: 'Ciò che accade', description: 'Un fatto esterno — una frase, un orario, un nome — oppure interno, come la stanchezza o un ricordo.', question: 'Che cosa è successo, descritto come lo vedrebbe una videocamera?', intervention: 'Ridurre la vulnerabilità (sonno, stress, alcol) e riconoscere le situazioni che ti attivano di più.', example: 'La tua partner ti dice che ha pranzato con un collega.' },
+  { id: 'emozione', name: 'Emozione', short: 'Ciò che senti', description: 'La risposta emotiva e corporea, spesso più emozioni sovrapposte.', question: 'Che cosa provo, con quale intensità? C’è qualcosa sotto?', intervention: 'Nominare l’emozione con precisione. Accoglierla: non è una colpa.', example: 'Gelosia in superficie; sotto, paura di essere meno importante.' },
+  { id: 'pensiero', name: 'Pensiero', short: 'Ciò che ti dici', description: 'La storia che la mente costruisce per spiegare l’emozione.', question: 'Che cosa mi sto dicendo? È un fatto o un’interpretazione?', intervention: 'Separare fatti e interpretazioni; cercare almeno due spiegazioni alternative.', example: '“Quel collega è una minaccia.”' },
+  { id: 'impulso', name: 'Impulso', short: 'Ciò che vorresti fare', description: 'La spinta ad agire che accompagna emozione e pensiero. Non è ancora un’azione.', question: 'Che cosa ho voglia di fare adesso? Mi avvicina alla persona che voglio essere?', intervention: 'Notare l’impulso senza eseguirlo. Prendere tempo. Pausa emotiva.', example: 'Chiedere spiegazioni, subito e nel dettaglio.' },
+  { id: 'comportamento', name: 'Comportamento', short: 'Ciò che fai', description: 'Il gesto visibile: parole, tono, domande, silenzi, azioni.', question: 'Che cosa ho detto o fatto, concretamente?', intervention: 'Scegliere una risposta coerente con i tuoi valori: esprimere il bisogno, rimandare, lasciare spazio.', example: '«Ah, e da quando pranzi con lui?»' },
+  { id: 'effetto', name: 'Effetto su di lei', short: 'Ciò che provochi', description: 'L’impatto del comportamento sull’altra persona, al di là delle intenzioni.', question: 'Che cosa potrebbe aver sentito o pensato lei?', intervention: 'Osservare i suoi segnali; chiederle come si è sentita; riconoscere l’impatto.', example: 'Si sente accusata per un pranzo di lavoro.' },
+  { id: 'conseguenza', name: 'Conseguenza', short: 'Che cosa cambia', description: 'Ciò che succede dopo, nella relazione e in te. Spesso diventa la situazione del ciclo successivo.', question: 'Che cosa è cambiato tra noi? Il ciclo sta ricominciando?', intervention: 'Riparare; aggiornare il piano; riconoscere la ripetizione.', example: 'La prossima volta non ti dirà del pranzo. Tu lo scoprirai e ti sentirai escluso.' },
 ];

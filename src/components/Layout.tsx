@@ -6,11 +6,11 @@ import { BrandMark, Icon } from './Icon';
 const nav = [
   { to: '/', label: 'Inizio', end: true },
   { to: '/laboratori', label: 'Laboratori' },
-  { to: '/scenari', label: 'Scenari' },
+  { to: '/scenari', label: 'Situazioni' },
   { to: '/diario', label: 'Diario' },
   { to: '/piano', label: 'Piano' },
   { to: '/progressi', label: 'Progressi' },
-  { to: '/bibliografia', label: 'Fonti' },
+  { to: '/aiuto', label: 'Chiedere aiuto' },
 ];
 
 const tabs = [
@@ -62,12 +62,13 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="container">
             <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <p style={{ maxWidth: 520, margin: 0 }}>
-                <strong>Oltre la reazione</strong> è uno strumento di consapevolezza e di auto-osservazione. Non sostituisce un percorso
-                psicologico e non fornisce diagnosi. I tuoi dati restano su questo dispositivo.
+                <strong>Oltre la reazione</strong> è uno strumento di consapevolezza e di responsabilità relazionale. Non sostituisce uno
+                psicologo e non fornisce diagnosi. I tuoi dati restano su questo dispositivo. In caso di pericolo: 112.
               </p>
               <div className="row" style={{ gap: 18 }}>
                 <Link to="/sicurezza">Sicurezza e aiuto</Link>
                 <Link to="/dati">Privacy e dati</Link>
+                <Link to="/aiuto">Chiedere aiuto</Link>
                 <Link to="/bibliografia">Bibliografia</Link>
                 <Link to="/benvenuto">Il metodo</Link>
               </div>

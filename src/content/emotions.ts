@@ -1,74 +1,25 @@
 /**
- * Vocabolario emotivo per famiglie. Le famiglie seguono una classificazione
- * pratica e diffusa; non pretendono di essere una tassonomia scientifica definitiva.
+ * Vocabolario emotivo per lo strumento "Che cosa stai provando davvero?".
+ * Le famiglie sono una classificazione pratica, non una tassonomia scientifica definitiva.
  */
 export interface EmotionFamily {
   id: string;
   name: string;
-  signal: string; // che cosa tende a segnalare
-  urge: string; // impulso tipico
+  surface: boolean; // emozione che tende a "mostrarsi" in superficie
+  signal: string;
+  urge: string;
   words: string[];
 }
 
 export const emotionFamilies: EmotionFamily[] = [
-  {
-    id: 'rabbia',
-    name: 'Rabbia',
-    signal: 'Un confine superato, un’ingiustizia percepita, un ostacolo a un obiettivo importante.',
-    urge: 'Attaccare, difendersi, spingere via.',
-    words: ['irritazione', 'fastidio', 'frustrazione', 'indignazione', 'risentimento', 'esasperazione', 'collera', 'rancore'],
-  },
-  {
-    id: 'paura',
-    name: 'Paura',
-    signal: 'Una minaccia, anche solo possibile: di perdere, di essere rifiutati, di non farcela.',
-    urge: 'Fuggire, controllare, cercare rassicurazione, bloccarsi.',
-    words: ['ansia', 'preoccupazione', 'inquietudine', 'agitazione', 'timore', 'panico', 'insicurezza', 'allarme'],
-  },
-  {
-    id: 'tristezza',
-    name: 'Tristezza',
-    signal: 'Una perdita, una distanza, qualcosa che si desiderava e non c’è.',
-    urge: 'Ritirarsi, rallentare, cercare conforto.',
-    words: ['delusione', 'malinconia', 'scoraggiamento', 'solitudine', 'nostalgia', 'sconforto', 'amarezza', 'abbattimento'],
-  },
-  {
-    id: 'vergogna',
-    name: 'Vergogna e colpa',
-    signal: 'Il timore di essere visti come inadeguati (vergogna) o la percezione di aver fatto un torto (colpa).',
-    urge: 'Nascondersi, giustificarsi, attaccare per non esporsi; oppure riparare.',
-    words: ['imbarazzo', 'umiliazione', 'inadeguatezza', 'senso di colpa', 'rimorso', 'esposizione', 'disagio', 'mortificazione'],
-  },
-  {
-    id: 'disgusto',
-    name: 'Disgusto e disprezzo',
-    signal: 'Qualcosa percepito come contaminante, inaccettabile o “inferiore”.',
-    urge: 'Respingere, prendere le distanze, svalutare.',
-    words: ['repulsione', 'avversione', 'fastidio morale', 'disprezzo', 'sdegno', 'nausea'],
-  },
-  {
-    id: 'ferita',
-    name: 'Ferita relazionale',
-    signal: 'Il legame sembra meno sicuro: non essere visti, scelti, rispettati.',
-    urge: 'Protestare, chiudersi, mettere alla prova l’altro.',
-    words: ['esclusione', 'abbandono', 'tradimento', 'invisibilità', 'gelosia', 'rifiuto', 'svalutazione', 'incompreso/a'],
-  },
-  {
-    id: 'sovraccarico',
-    name: 'Sovraccarico',
-    signal: 'Le risorse sembrano inferiori alle richieste.',
-    urge: 'Scappare, spegnersi, esplodere per una goccia.',
-    words: ['stanchezza', 'sopraffazione', 'confusione', 'tensione', 'stress', 'impotenza', 'vuoto', 'intorpidimento'],
-  },
-  {
-    id: 'apertura',
-    name: 'Apertura e benessere',
-    signal: 'Sicurezza, connessione, qualcosa che conta va bene.',
-    urge: 'Avvicinarsi, condividere, esplorare.',
-    words: ['sollievo', 'gratitudine', 'tenerezza', 'fiducia', 'calma', 'gioia', 'orgoglio', 'speranza'],
-  },
+  { id: 'gelosia', name: 'Gelosia', surface: true, signal: 'Il timore che una terza persona possa prendere il tuo posto o ricevere ciò che desideri.', urge: 'Indagare, verificare, impedire, chiedere conferme.', words: ['gelosia', 'sospetto', 'possessività', 'invidia', 'senso di minaccia'] },
+  { id: 'rabbia', name: 'Rabbia', surface: true, signal: 'Un confine percepito come superato, un’ingiustizia, un bisogno ignorato.', urge: 'Attaccare, alzare la voce, imporre, punire.', words: ['irritazione', 'frustrazione', 'indignazione', 'risentimento', 'esasperazione', 'collera'] },
+  { id: 'paura', name: 'Paura', surface: false, signal: 'La possibilità di perdere qualcosa di importante: lei, il legame, il tuo posto nella sua vita.', urge: 'Controllare, trattenere, cercare rassicurazione, fuggire.', words: ['paura di perderla', 'paura di essere lasciato', 'paura del tradimento', 'ansia', 'allarme', 'panico'] },
+  { id: 'insicurezza', name: 'Insicurezza', surface: false, signal: 'Il dubbio di non essere abbastanza: interessante, desiderabile, importante.', urge: 'Confrontarsi, cercare conferme, chiudersi.', words: ['insicurezza', 'inadeguatezza', 'sentirmi meno', 'sentirmi sostituibile', 'dubbio su di me'] },
+  { id: 'vergogna', name: 'Vergogna e umiliazione', surface: false, signal: 'Il timore di essere visti come inadeguati, ridicoli, inferiori.', urge: 'Nascondersi, attaccare per non esporsi, minimizzare.', words: ['vergogna', 'umiliazione', 'imbarazzo', 'senso di colpa', 'esposizione'] },
+  { id: 'tristezza', name: 'Tristezza e solitudine', surface: false, signal: 'Una distanza, una perdita, qualcosa che desideri e non c’è.', urge: 'Ritirarsi, cercare vicinanza, chiedere conforto.', words: ['tristezza', 'solitudine', 'esclusione', 'nostalgia', 'delusione', 'sentirmi messo da parte'] },
+  { id: 'impotenza', name: 'Impotenza', surface: false, signal: 'La sensazione di non poter controllare ciò che succede.', urge: 'Riprendere il controllo con la forza, oppure arrendersi.', words: ['impotenza', 'sopraffazione', 'confusione', 'stanchezza', 'vuoto'] },
 ];
 
 export const allEmotionWords = emotionFamilies.flatMap((f) => f.words);
-
 export const familyOfWord = (w: string) => emotionFamilies.find((f) => f.words.includes(w));

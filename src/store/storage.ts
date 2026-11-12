@@ -1,17 +1,18 @@
-import type { AppData, PersonalPlan, Progress } from '../types';
+import type { AppData, JournalEntry, PersonalPlan, Progress, SafetyState } from '../types';
 
 /** Chiave unica in localStorage. Tutti i dati restano sul dispositivo. */
-export const STORAGE_KEY = 'oltre-la-reazione:v1';
+export const STORAGE_KEY = 'oltre-la-reazione:v2';
 
 export const emptyPlan = (): PersonalPlan => ({
-  motivation: '',
-  values: '',
+  behavior: '',
   triggers: [],
-  earlySignals: [],
-  pauseStrategies: [],
+  emotions: [],
+  thoughts: [],
+  alternative: '',
+  partnerLimit: '',
+  measures: [],
+  relapse: '',
   ifThen: [],
-  repairPhrases: [],
-  boundaries: [],
   support: '',
   reviewDate: '',
   updatedAt: null,
@@ -23,23 +24,58 @@ export const emptyProgress = (): Progress => ({
   scenarios: {},
   exercises: {},
   tools: {},
+  selfChecks: {},
+  classifiers: {},
+  helpOpened: [],
+});
+
+export const emptySafety = (): SafetyState => ({
+  flagged: false,
+  checkedAt: null,
+  acknowledgedAt: null,
+  exitPlan: { where: '', who: '', message: '' },
 });
 
 export const initialData = (): AppData => ({
-  version: 1,
+  version: 2,
   onboarded: false,
   progress: emptyProgress(),
   journal: [],
   plan: emptyPlan(),
+  safety: emptySafety(),
 });
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const strArr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+const rid = () => Math.random().toString(36).slice(2);
+
+function normalizeEntry(e: Record<string, unknown>): JournalEntry {
+  const now = new Date().toISOString();
+  return {
+    id: str(e.id) || rid(),
+    createdAt: str(e.createdAt) || now,
+    updatedAt: str(e.updatedAt) || str(e.createdAt) || now,
+    title: str(e.title),
+    situation: str(e.situation),
+    facts: str(e.facts),
+    interpretation: str(e.interpretation),
+    fear: str(e.fear),
+    emotions: strArr(e.emotions),
+    intensity: typeof e.intensity === 'number' ? Math.max(0, Math.min(10, e.intensity)) : 5,
+    body: str(e.body),
+    impulse: str(e.impulse),
+    action: str(e.action),
+    impact: str(e.impact),
+    otherView: str(e.otherView),
+    alternative: str(e.alternative),
+    lab: typeof e.lab === 'string' ? (e.lab as JournalEntry['lab']) : undefined,
+  };
+}
 
 /**
  * Normalizza dati provenienti da localStorage o da un file importato.
- * Qualsiasi campo mancante o malformato viene sostituito dal valore di default,
+ * Ogni campo mancante o malformato è sostituito dal valore di default,
  * così un dato corrotto non blocca mai l'app.
  */
 export function normalize(raw: unknown): AppData {
@@ -53,48 +89,41 @@ export function normalize(raw: unknown): AppData {
     scenarios: isObj(p.scenarios) ? (p.scenarios as Progress['scenarios']) : {},
     exercises: isObj(p.exercises) ? (p.exercises as Progress['exercises']) : {},
     tools: isObj(p.tools) ? (p.tools as Progress['tools']) : {},
-    facts: isObj(p.facts) ? (p.facts as unknown as Progress['facts']) : undefined,
+    selfChecks: isObj(p.selfChecks)
+      ? Object.fromEntries(Object.entries(p.selfChecks).filter(([, v]) => typeof v === 'number')) as Record<string, number>
+      : {},
+    classifiers: isObj(p.classifiers) ? (p.classifiers as Progress['classifiers']) : {},
+    helpOpened: strArr(p.helpOpened),
   };
 
-  const journal = Array.isArray(raw.journal)
-    ? raw.journal.filter(isObj).map((e) => ({
-        id: str(e.id) || Math.random().toString(36).slice(2),
-        createdAt: str(e.createdAt) || new Date().toISOString(),
-        updatedAt: str(e.updatedAt) || str(e.createdAt) || new Date().toISOString(),
-        title: str(e.title),
-        situation: str(e.situation),
-        facts: str(e.facts),
-        interpretation: str(e.interpretation),
-        emotions: strArr(e.emotions),
-        intensity: typeof e.intensity === 'number' ? Math.max(0, Math.min(10, e.intensity)) : 5,
-        body: str(e.body),
-        impulse: str(e.impulse),
-        action: str(e.action),
-        impact: str(e.impact),
-        otherView: str(e.otherView),
-        alternative: str(e.alternative),
-        lab: typeof e.lab === 'string' ? (e.lab as AppData['journal'][number]['lab']) : undefined,
-      }))
-    : [];
+  const journal = Array.isArray(raw.journal) ? raw.journal.filter(isObj).map(normalizeEntry) : [];
 
   const pl = isObj(raw.plan) ? raw.plan : {};
   const plan: PersonalPlan = {
-    motivation: str(pl.motivation),
-    values: str(pl.values),
+    behavior: str(pl.behavior),
     triggers: strArr(pl.triggers),
-    earlySignals: strArr(pl.earlySignals),
-    pauseStrategies: strArr(pl.pauseStrategies),
-    ifThen: Array.isArray(pl.ifThen)
-      ? pl.ifThen.filter(isObj).map((x) => ({ id: str(x.id) || Math.random().toString(36).slice(2), when: str(x.when), then: str(x.then) }))
-      : [],
-    repairPhrases: strArr(pl.repairPhrases),
-    boundaries: strArr(pl.boundaries),
+    emotions: strArr(pl.emotions),
+    thoughts: strArr(pl.thoughts),
+    alternative: str(pl.alternative),
+    partnerLimit: str(pl.partnerLimit),
+    measures: strArr(pl.measures),
+    relapse: str(pl.relapse),
+    ifThen: Array.isArray(pl.ifThen) ? pl.ifThen.filter(isObj).map((x) => ({ id: str(x.id) || rid(), when: str(x.when), then: str(x.then) })) : [],
     support: str(pl.support),
     reviewDate: str(pl.reviewDate),
     updatedAt: typeof pl.updatedAt === 'string' ? pl.updatedAt : null,
   };
 
-  return { version: 1, onboarded: raw.onboarded === true, progress, journal, plan };
+  const s = isObj(raw.safety) ? raw.safety : {};
+  const ep = isObj(s.exitPlan) ? s.exitPlan : {};
+  const safety: SafetyState = {
+    flagged: s.flagged === true,
+    checkedAt: typeof s.checkedAt === 'string' ? s.checkedAt : null,
+    acknowledgedAt: typeof s.acknowledgedAt === 'string' ? s.acknowledgedAt : null,
+    exitPlan: { where: str(ep.where), who: str(ep.who), message: str(ep.message) },
+  };
+
+  return { version: 2, onboarded: raw.onboarded === true, progress, journal, plan, safety };
 }
 
 export function loadData(): AppData {
@@ -107,7 +136,7 @@ export function loadData(): AppData {
   }
 }
 
-/** Restituisce false se il salvataggio non è riuscito (es. storage pieno o disabilitato). */
+/** Restituisce false se il salvataggio non è riuscito (storage pieno o disabilitato). */
 export function saveData(data: AppData): boolean {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
