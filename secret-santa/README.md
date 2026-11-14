@@ -9,45 +9,51 @@ React + Vite, CSS puro, `lucide-react` per le icone. Nessun'altra dipendenza.
 
 ## 1. Architettura
 
+Un **unico link** per tutti. L'identità si conferma con un **codice inviato via
+email**: ogni nome è legato alla email del partecipante, e il destinatario si
+vede solo inserendo il codice arrivato in quella casella. Chi sceglie il nome di
+un altro non riceve il codice e quindi non vede niente.
+
 ```
-┌──────────── Browser (React) ─────────────┐        ┌──────────── Supabase ────────────┐
-│  Home → Chi sei? → PIN → Rivelazione →    │  RPC   │  get_secret_santa_status()       │
-│  Segreto custodito                        │ ─────► │  claim_secret_santa(name, pin)   │
-│                                           │        │  reveal_secret_santa(name, pin)  │
-│  drawService ─┬─ supabaseService (fetch)  │        │                                  │
-│               └─ localService (demo)      │        │  santa_participants  (RLS, 🔒)    │
-└───────────────────────────────────────────┘        │  santa_assignments   (RLS, 🔒)    │
-                                                     └──────────────────────────────────┘
+┌──────────── Browser (React) ─────────────┐          ┌────────────── Supabase ──────────────┐
+│ Home → Chi sei? → email → codice →        │  anon    │ get_secret_santa_status()  nomi+flag │
+│ Rivelazione → Segreto custodito           │ ───────► │ check_secret_santa_email(nome,email) │
+│                                           │  Auth    │ /auth/v1/otp     → invia il codice   │
+│ drawService ─┬─ supabaseService (fetch)   │ ───────► │ /auth/v1/verify  → token             │
+│              └─ localService (demo)       │  token   │ my_secret_santa() → SOLO il tuo nome │
+└───────────────────────────────────────────┘ ───────► │ santa_participants / assignments 🔒  │
+                                                       └──────────────────────────────────────┘
 ```
 
-- **L'estrazione avviene sul server**, una sola volta, alla prima richiesta
-  (sotto advisory lock: due telefoni in contemporanea non possono generarne due).
+- **L'estrazione avviene sul server**, una sola volta, al primo accesso, sotto
+  advisory lock (due telefoni in contemporanea non possono generarne due).
   Algoritmo: permutazione casuale con byte crittografici, scartata se qualcuno
   pesca sé stesso → derangement uniforme.
-- Le tabelle hanno **RLS attiva senza policy** e privilegi revocati: dal browser
-  non sono leggibili in nessun modo. Il browser può solo chiamare le 3 funzioni.
-- Il browser **non riceve mai l'elenco delle coppie**: lo stato pubblico contiene
-  solo nomi e "ha già pescato sì/no"; ogni persona riceve solo il proprio destinatario.
+- `my_secret_santa()` non riceve alcun nome dal browser: ricava l'identità
+  **solo** dall'email verificata contenuta nel token di Supabase Auth. Non esiste
+  una chiamata che restituisca il destinatario di qualcun altro.
+- Le tabelle hanno **RLS attiva senza policy** e privilegi revocati: né anonimi
+  né autenticati possono leggerle. Il browser non riceve mai l'elenco delle
+  coppie né le email degli altri.
 - Il database stesso impone le regole: `check (giver_id <> receiver_id)`,
   `receiver_id unique`, un donatore per riga.
-- **PIN personale** (4 cifre, salvato come hash bcrypt): serve a rivedere il
-  proprio nome più tardi, da qualsiasi dispositivo. Dopo 5 tentativi errati il
-  nome è bloccato per 15 minuti.
+- Il token di accesso **non viene salvato**: vive in memoria il tempo della
+  richiesta. Su un telefono condiviso nessuno può riaprire la sessione di un altro.
 - Senza Supabase configurato l'app parte in **modalità demo** (vedi §5).
 
 ```
 src/
 ├── App.jsx                 flusso e stato della UI
 ├── screens/                Home, WhoAreYou, Reveal, Farewell
-├── components/             Snow, Confetti, StringLights, GiftBox, PinSheet,
-│                           HomeIllustration, MusicToggle, Ornaments, Footer
+├── components/             AuthSheet (email + codice), Snow, Confetti, StringLights,
+│                           GiftBox, HomeIllustration, MusicToggle, Ornaments, Footer
 ├── services/               drawService (scelta), supabaseService, localService
 ├── lib/                    participants, derangement (algoritmo + verifica)
 ├── audio/musicEngine.js    musica originale sintetizzata / file audio
 └── styles/index.css        design system (token, componenti, animazioni)
 supabase/
-├── migrations/001_secret_santa.sql   schema, funzioni, permessi
-└── tests/draw_test.sql               test automatici in SQL
+├── migrations/001_secret_santa.sql   schema, email, funzioni, permessi
+└── tests/                            test SQL (+ simulazione di auth.jwt per Postgres locale)
 ```
 
 ## 2. Esperienza utente
@@ -57,15 +63,16 @@ supabase/
 2. **Chi sei?**: 8 card color avorio con sigillo di ceralacca e agrifoglio. Chi
    ha già pescato appare spento con il lucchetto; un contatore mostra quanti
    hanno pescato (si aggiorna da solo ogni 10 s).
-3. Toccato il proprio nome compare *Scopri chi devi sorprendere* → pannello
-   **"Sei proprio tu, Martina?"** con la scelta del PIN. È una conferma in più che
-   evita di pescare per sbaglio al posto di un altro.
-4. **Rivelazione**: il pacchetto trema per ~2,7 s ("Gli elfi stanno controllando
-   la lista…"), il coperchio vola via, si accende la luce, coriandoli dorati e
-   stelline, e il nome appare su un biglietto vintage.
-5. *Ho scoperto il mio Secret Santa!* → **Segreto custodito**: il nome sparisce
-   dallo schermo e dalla memoria, e il telefono può passare al prossimo.
-6. Per rivedere il nome: toccare il proprio nome (con il lucchetto) e inserire il PIN.
+3. Toccato il proprio nome compare *Scopri chi devi sorprendere* → **"Sei proprio
+   tu, Martina?"**: si inserisce la propria email. Se non è quella di Martina,
+   l'app lo dice subito e non invia nulla.
+4. **"Controlla la posta"**: si inserisce il codice ricevuto (su iPhone e
+   Android la tastiera lo propone in automatico). Si può chiederne uno nuovo dopo 60 s.
+5. **Rivelazione**: il pacchetto trema per ~2,7 s, il coperchio vola via, si
+   accende la luce, coriandoli dorati, e il nome appare su un biglietto vintage.
+6. *Ho scoperto il mio Secret Santa!* → **Segreto custodito**: il nome sparisce
+   dallo schermo e dalla memoria.
+7. Per rivederlo: toccare il proprio nome (con il lucchetto) e rifare email + codice.
 
 ## 3. Avvio in locale
 
@@ -76,27 +83,57 @@ npm run dev          # http://localhost:5173 (anche dalla rete locale, --host)
 npm run build        # build statica in dist/
 ```
 
-## 4. Configurare Supabase (per l'uso reale, consigliato)
+## 4. Configurare Supabase (per l'uso reale)
 
-1. Crea un progetto gratuito su [supabase.com](https://supabase.com).
-2. **SQL Editor** → incolla ed esegui `supabase/migrations/001_secret_santa.sql`.
-3. **Project Settings → API**: copia *Project URL* e *anon public key*.
-4. Crea `.env.local` partendo da `.env.example`:
+Tempo: circa 20 minuti, una volta sola.
+
+1. **Progetto**: crea un progetto gratuito su [supabase.com](https://supabase.com).
+2. **Email dei partecipanti**: apri `supabase/migrations/001_secret_santa.sql`,
+   sostituisci gli 8 indirizzi `@example.com` della sezione ✏️ con quelli veri
+   (in minuscolo), poi incolla ed esegui tutto nel **SQL Editor**.
+3. **Invio email (SMTP)**. ⚠️ Passaggio obbligatorio: il servizio email
+   predefinito di Supabase invia solo agli indirizzi dei membri del progetto e
+   pochissime email all'ora. In **Authentication → Emails → SMTP Settings**
+   attiva un SMTP personalizzato. Le opzioni più semplici e gratuite:
+   - **Gmail** con una *password per le app* (account Google → Sicurezza →
+     Verifica in due passaggi → Password per le app): host `smtp.gmail.com`,
+     porta `465`, utente = il tuo Gmail, password = la password per le app;
+   - oppure **Resend** / **Brevo**, che hanno piani gratuiti.
+
+   Poi in **Authentication → Rate Limits** alza *emails per hour* (es. 30).
+4. **Testo dell'email con il codice**. In **Authentication → Emails → Templates →
+   Magic Link** il modello deve contenere `{{ .Token }}`, cioè il codice. Esempio:
+   ```html
+   <h2>🎅 Secret Santa – The Christmas Draw</h2>
+   <p>Ecco il tuo codice per scoprire chi devi sorprendere:</p>
+   <p style="font-size:28px;letter-spacing:6px"><strong>{{ .Token }}</strong></p>
+   <p>Non condividerlo con nessuno! 🤫</p>
+   ```
+   Oggetto suggerito: `Il tuo codice Secret Santa 🎁`.
+5. **Chiavi**: in **Project Settings → API** copia *Project URL* e *anon public
+   key* e crea `.env.local` partendo da `.env.example`:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co
    VITE_SUPABASE_ANON_KEY=eyJ...
    ```
-5. `npm run build` e pubblica la cartella `dist/` su Netlify, Vercel o GitHub Pages
-   (su Netlify/Vercel imposta le due variabili nelle impostazioni del progetto).
-   La anon key è pensata per essere pubblica: i dati sono protetti da RLS e grant.
+6. **Pubblicazione**: `npm run build` e carica `dist/` su Netlify, Vercel o
+   GitHub Pages (su Netlify/Vercel imposta le due variabili nelle impostazioni
+   del progetto). La anon key è pensata per essere pubblica: i dati sono protetti
+   da RLS, grant e dal login via email.
+7. **Prova generale**: prima di mandare il link al gruppo, fai tu il percorso
+   con la tua email per controllare che il codice arrivi. Poi
+   `select public.reset_secret_santa();` per ripartire da zero.
 
-**Comandi da amministratore** (solo dal SQL Editor della dashboard):
+**Comandi da amministratore** (SQL Editor della dashboard):
 
 ```sql
 -- chi ha già pescato (senza vedere le coppie)
 select name, claimed_at from santa_participants order by id;
 
--- ricominciare da zero (nuova estrazione alla prima richiesta)
+-- correggere un'email
+update santa_participants set email = 'nuova@email.it' where name = 'Luca';
+
+-- ricominciare da zero (nuova estrazione al primo accesso)
 select public.reset_secret_santa();
 ```
 
@@ -106,14 +143,13 @@ Per cambiare i partecipanti, modifica l'`insert` nella migration **e**
 ## 5. Modalità demo: limiti
 
 Se `VITE_SUPABASE_*` non sono impostate, l'app funziona in **modalità demo** (lo
-segnala sotto la griglia dei nomi). Stesse regole, ma tutto è salvato nel
-`localStorage` di **quel** browser:
+segnala sotto la griglia dei nomi). Il flusso è identico, ma **nessuna email
+viene inviata**: il codice appare direttamente a schermo. Tutto resta nel
+`localStorage` di quel browser. Serve solo per provare l'esperienza:
 
-- va bene per provare l'esperienza, o per una festa in cui ci si passa **un solo
-  telefono**;
-- **non è sicura**: dagli strumenti per sviluppatori si possono leggere le coppie;
-- ogni dispositivo avrebbe un'estrazione diversa, e cancellando i dati del sito
-  l'estrazione si perde.
+- **non protegge nulla**: chiunque può pescare per chiunque e dagli strumenti per
+  sviluppatori si leggono le coppie;
+- ogni dispositivo avrebbe un'estrazione diversa.
 
 ## 6. Musica
 
@@ -135,23 +171,27 @@ zero kilobyte di audio.
 
 ```bash
 npm run verify:draw    # 50.000 estrazioni: regole rispettate, distribuzione uniforme
-psql -f supabase/migrations/001_secret_santa.sql   # su un Postgres di prova
-psql -f supabase/tests/draw_test.sql               # test di sicurezza e regole
+
+# su un PostgreSQL di prova (non su Supabase):
+psql -f supabase/tests/local_auth_mock.sql       # simula ruoli e auth.jwt() di Supabase
+psql -f supabase/migrations/001_secret_santa.sql
+psql -f supabase/tests/draw_test.sql
 ```
 
-Il test SQL (eseguito come ruolo `anon`, come il browser) verifica che:
-le tabelle e le funzioni interne siano inaccessibili; 8 persone ricevano 8
-destinatari diversi, nessuno sé stesso; un nome già usato non possa pescare di
-nuovo; il PIN restituisca sempre la stessa assegnazione; 5 PIN errati blocchino
-il nome; lo stato pubblico non contenga coppie; su 2000 estrazioni compaiano
-tutte le 56 coppie possibili con frequenza uniforme.
+Il test SQL, eseguito con i ruoli `anon` e `authenticated` come dal browser,
+verifica che:
+- le tabelle e le funzioni interne siano inaccessibili;
+- un anonimo non possa ottenere alcun destinatario e lo stato pubblico non
+  contenga coppie né email;
+- un'email estranea venga rifiutata;
+- 8 accessi diano 8 destinatari diversi, nessuno sé stesso;
+- rientrando si veda sempre lo stesso nome;
+- su 2000 estrazioni compaiano tutte le 56 coppie possibili con frequenza uniforme.
 
 ## 8. Sicurezza: cosa resta da sapere
 
-Senza account né link personali, l'app non può sapere *chi* tiene il telefono.
-Se qualcuno sceglie apposta il nome di un altro, vede il destinatario di
-quella persona. Il vero proprietario se ne accorge subito, perché trova il suo
-nome già "pescato", e l'organizzatrice può fare un reset. La conferma
-"Sei proprio tu?" riduce gli errori in buona fede. Se servisse una protezione
-più forte, il passo successivo è dare a ognuno un link personale con un token
-segreto.
+- La protezione vale quanto la casella email: chi ha accesso alla posta di
+  un'altra persona potrebbe vedere il suo nome.
+- `check_secret_santa_email` permette solo di verificare un'ipotesi
+  nome ↔ email (utile per il messaggio d'errore). Non rivela le email e non dà
+  accesso a nessuna assegnazione.

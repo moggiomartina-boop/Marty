@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Snow from './components/Snow.jsx';
 import StringLights from './components/StringLights.jsx';
 import MusicToggle from './components/MusicToggle.jsx';
-import PinSheet from './components/PinSheet.jsx';
+import AuthSheet from './components/AuthSheet.jsx';
 import Footer from './components/Footer.jsx';
 import Home from './screens/Home.jsx';
 import WhoAreYou from './screens/WhoAreYou.jsx';
 import Reveal from './screens/Reveal.jsx';
 import Farewell from './screens/Farewell.jsx';
-import { drawService, errorMessage } from './services/drawService.js';
+import { drawService } from './services/drawService.js';
 import { startMusic, stopMusic } from './audio/musicEngine.js';
 
 const MUSIC_PREF = 'secret-santa-music';
@@ -16,7 +16,7 @@ const readPref = () => { try { return localStorage.getItem(MUSIC_PREF); } catch 
 const writePref = (v) => { try { localStorage.setItem(MUSIC_PREF, v); } catch { /* ignora */ } };
 
 /**
- * Flusso: home → chi sei? → (PIN) → rivelazione → segreto custodito → chi sei?
+ * Flusso: home → chi sei? → email + codice → rivelazione → segreto custodito.
  * Lo stato dell'estrazione vive sul server; qui teniamo solo lo stato della UI.
  * Il destinatario resta in memoria solo durante la rivelazione.
  */
@@ -26,13 +26,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState(null);
-  const [sheet, setSheet] = useState(null);          // { mode, name }
-  const [sheetError, setSheetError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [sheet, setSheet] = useState(null);          // { name, claimed }
   const [result, setResult] = useState(null);        // { giver, receiver, replay }
   const [playing, setPlaying] = useState(false);
-  const noticeTimer = useRef(0);
 
   /* ---------------------------------- dati --------------------------------- */
   const refresh = useCallback(async () => {
@@ -55,12 +51,6 @@ export default function App() {
     return () => clearInterval(id);
   }, [screen, refresh]);
 
-  const flash = (msg) => {
-    setNotice(msg);
-    clearTimeout(noticeTimer.current);
-    noticeTimer.current = setTimeout(() => setNotice(''), 6000);
-  };
-
   /* --------------------------------- musica -------------------------------- */
   const toggleMusic = async () => {
     if (playing) {
@@ -81,33 +71,15 @@ export default function App() {
     if (!playing && readPref() !== 'off') setPlaying(await startMusic());
   };
 
-  const openSheet = (mode, name) => {
-    setSheetError('');
-    setSheet({ mode, name });
-  };
+  const openSheet = (name, claimed) => setSheet({ name, claimed });
 
-  const submitPin = async (pin) => {
-    const { mode, name } = sheet;
-    setBusy(true);
-    const res = mode === 'create' ? await drawService.claim(name, pin) : await drawService.reveal(name, pin);
-    setBusy(false);
-
-    if (res?.ok) {
-      setSheet(null);
-      setSelected(null);
-      setResult({ giver: name, receiver: res.receiver, replay: mode === 'verify' });
-      setScreen('reveal');
-      window.scrollTo(0, 0);
-      return;
-    }
-    if (res?.error === 'ALREADY_CLAIMED') {
-      setSheet(null);
-      setSelected(null);
-      flash(`${name} ha già pescato. Se sei tu, tocca il tuo nome e usa il PIN.`);
-      refresh();
-      return;
-    }
-    setSheetError(errorMessage(res));
+  // identità confermata dal codice email: mostra la rivelazione
+  const onRevealed = (res) => {
+    setSheet(null);
+    setSelected(null);
+    setResult({ giver: res.giver, receiver: res.receiver, replay: !res.first_time });
+    setScreen('reveal');
+    window.scrollTo(0, 0);
   };
 
   const finishReveal = () => {
@@ -140,11 +112,10 @@ export default function App() {
             loading={loading}
             loadError={loadError}
             selected={selected}
-            notice={notice}
             demo={drawService.mode === 'demo'}
             onSelect={(n) => setSelected((s) => (s === n ? null : n))}
-            onSelectClaimed={(n) => { setSelected(null); openSheet('verify', n); }}
-            onReveal={() => selected && openSheet('create', selected)}
+            onSelectClaimed={(n) => { setSelected(null); openSheet(n, true); }}
+            onReveal={() => selected && openSheet(selected, false)}
             onBack={() => setScreen('home')}
             onRetry={refresh}
             onResetDemo={resetDemo}
@@ -158,13 +129,11 @@ export default function App() {
       </div>
 
       {sheet && (
-        <PinSheet
+        <AuthSheet
           name={sheet.name}
-          mode={sheet.mode}
-          error={sheetError}
-          busy={busy}
-          onSubmit={submitPin}
-          onClose={() => !busy && setSheet(null)}
+          claimed={sheet.claimed}
+          onRevealed={onRevealed}
+          onClose={() => setSheet(null)}
         />
       )}
 

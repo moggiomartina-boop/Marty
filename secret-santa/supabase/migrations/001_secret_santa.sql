@@ -1,21 +1,25 @@
 -- =============================================================================
 --  SECRET SANTA – THE CHRISTMAS DRAW · schema Supabase / PostgreSQL
 -- =============================================================================
---  Modello di sicurezza
+--  Modello di sicurezza (un unico link per tutti)
+--  - Ogni partecipante è legato alla propria EMAIL. Per vedere il proprio
+--    destinatario bisogna accedere con il codice che Supabase Auth invia a
+--    quella casella: chi sceglie il nome di un altro non riceve il codice e
+--    non vede nulla.
 --  - Le tabelle hanno RLS attiva e NESSUNA policy, e i privilegi sono revocati
---    ad anon/authenticated: dal browser non si può leggere né scrivere nulla
---    direttamente (né via REST né via client Supabase).
+--    ad anon/authenticated: dal browser non si leggono né si scrivono.
 --  - Il browser può chiamare soltanto tre funzioni RPC (SECURITY DEFINER):
---      get_secret_santa_status()        → nomi + "ha già pescato?" (niente coppie)
---      claim_secret_santa(name, pin)    → prima e unica estrazione di quel nome
---      reveal_secret_santa(name, pin)   → rivedere il proprio nome con il PIN
+--      get_secret_santa_status()             → nomi + "ha già pescato?" (anon)
+--      check_secret_santa_email(name, email) → l'email è quella di quel nome? (anon)
+--      my_secret_santa()                     → il PROPRIO destinatario, ricavato
+--                                              dall'email del token di accesso
+--                                              (solo utenti autenticati)
 --  - L'estrazione globale avviene lato server, una sola volta, alla prima
---    richiesta, sotto advisory lock: non è mai possibile rigenerarla per errore.
---  - Il PIN è salvato come hash bcrypt; dopo 5 tentativi errati il nome viene
---    bloccato per 15 minuti.
---  - Il reset è possibile solo dal SQL editor della dashboard (ruolo postgres).
+--    richiesta, sotto advisory lock: non può essere rigenerata per errore.
+--  - Il reset è possibile solo dal SQL editor della dashboard.
 --
---  Esegui questo file una volta nel SQL Editor del tuo progetto Supabase.
+--  Esegui questo file una volta nel SQL Editor del tuo progetto Supabase,
+--  DOPO aver inserito le email vere nella sezione ✏️ qui sotto.
 -- =============================================================================
 
 create schema if not exists extensions;
@@ -25,12 +29,10 @@ create extension if not exists pgcrypto with schema extensions;
 --  Tabelle
 -- -----------------------------------------------------------------------------
 create table if not exists public.santa_participants (
-  id               smallint primary key,
-  name             text        not null unique,
-  claimed_at       timestamptz,
-  pin_hash         text,
-  failed_attempts  integer     not null default 0,
-  locked_until     timestamptz
+  id          smallint primary key,
+  name        text not null unique,
+  email       text not null unique check (email = lower(email)),
+  claimed_at  timestamptz
 );
 
 create table if not exists public.santa_assignments (
@@ -47,10 +49,21 @@ alter table public.santa_assignments  enable row level security;
 revoke all on table public.santa_participants from public, anon, authenticated;
 revoke all on table public.santa_assignments  from public, anon, authenticated;
 
--- Partecipanti (l'ordine dell'id è l'ordine di visualizzazione)
-insert into public.santa_participants (id, name) values
-  (1, 'Martina'), (2, 'Rebecca'), (3, 'Giulia'), (4, 'Sofia'),
-  (5, 'Nicolò'),  (6, 'Marco'),   (7, 'Federico'), (8, 'Luca')
+-- -----------------------------------------------------------------------------
+--  ✏️  PARTECIPANTI E LORO EMAIL — sostituisci gli indirizzi d'esempio!
+--  (l'ordine dell'id è l'ordine di visualizzazione; email in minuscolo)
+--  Per correggere un'email più avanti:
+--    update santa_participants set email = 'nuova@email.it' where name = 'Luca';
+-- -----------------------------------------------------------------------------
+insert into public.santa_participants (id, name, email) values
+  (1, 'Martina',  'martina@example.com'),
+  (2, 'Rebecca',  'rebecca@example.com'),
+  (3, 'Giulia',   'giulia@example.com'),
+  (4, 'Sofia',    'sofia@example.com'),
+  (5, 'Nicolò',   'nicolo@example.com'),
+  (6, 'Marco',    'marco@example.com'),
+  (7, 'Federico', 'federico@example.com'),
+  (8, 'Luca',     'luca@example.com')
 on conflict (id) do nothing;
 
 -- -----------------------------------------------------------------------------
@@ -106,7 +119,7 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
---  RPC pubblica 1 · stato (solo nomi e flag, MAI le coppie)
+--  RPC pubblica · stato (solo nomi e flag, MAI le coppie né le email)
 -- -----------------------------------------------------------------------------
 create or replace function public.get_secret_santa_status()
 returns json
@@ -122,11 +135,30 @@ as $$
 $$;
 
 -- -----------------------------------------------------------------------------
---  RPC pubblica 2 · prima estrazione di un partecipante
---  Ritorna {ok:true, receiver} oppure {ok:false, error}
---  (niente eccezioni: così gli aggiornamenti non vengono annullati)
+--  RPC pubblica · l'email indicata corrisponde a quel nome?
+--  Serve solo a dare un messaggio chiaro PRIMA di inviare il codice.
+--  Non rivela nulla: per vedere l'assegnazione serve comunque il codice email.
 -- -----------------------------------------------------------------------------
-create or replace function public.claim_secret_santa(p_name text, p_pin text)
+create or replace function public.check_secret_santa_email(p_name text, p_email text)
+returns json
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select json_build_object('ok', exists (
+    select 1 from santa_participants
+     where name = p_name and email = lower(trim(p_email))
+  ));
+$$;
+
+-- -----------------------------------------------------------------------------
+--  RPC autenticata · il MIO Secret Santa
+--  L'identità viene SOLO dal token di Supabase Auth (email verificata con il
+--  codice). Il primo accesso segna "ha pescato"; i successivi mostrano lo
+--  stesso nome. Ritorna {ok, giver, receiver, first_time} oppure {ok:false, error}.
+-- -----------------------------------------------------------------------------
+create or replace function public.my_secret_santa()
 returns json
 language plpgsql
 volatile
@@ -134,87 +166,32 @@ security definer
 set search_path = public, extensions
 as $$
 declare
+  my_email  text := lower(coalesce(auth.jwt() ->> 'email', ''));
   me        santa_participants%rowtype;
   receiver  text;
 begin
-  if p_pin is null or p_pin !~ '^[0-9]{4}$' then
-    return json_build_object('ok', false, 'error', 'INVALID_PIN');
+  if my_email = '' then
+    return json_build_object('ok', false, 'error', 'NOT_AUTHENTICATED');
+  end if;
+
+  select * into me from santa_participants where email = my_email for update;
+  if not found then
+    return json_build_object('ok', false, 'error', 'NOT_PARTICIPANT');
   end if;
 
   perform _santa_ensure_draw();
 
-  select * into me from santa_participants where name = p_name for update;
-  if not found then
-    return json_build_object('ok', false, 'error', 'NOT_FOUND');
+  if me.claimed_at is null then
+    update santa_participants set claimed_at = now() where id = me.id;
   end if;
-  if me.claimed_at is not null then
-    return json_build_object('ok', false, 'error', 'ALREADY_CLAIMED');
-  end if;
-
-  update santa_participants
-     set claimed_at = now(),
-         pin_hash   = extensions.crypt(p_pin, extensions.gen_salt('bf', 8)),
-         failed_attempts = 0,
-         locked_until = null
-   where id = me.id;
 
   select r.name into receiver
     from santa_assignments a
     join santa_participants r on r.id = a.receiver_id
    where a.giver_id = me.id;
 
-  return json_build_object('ok', true, 'receiver', receiver);
-end;
-$$;
-
--- -----------------------------------------------------------------------------
---  RPC pubblica 3 · rivedere la propria assegnazione con il PIN
--- -----------------------------------------------------------------------------
-create or replace function public.reveal_secret_santa(p_name text, p_pin text)
-returns json
-language plpgsql
-volatile
-security definer
-set search_path = public, extensions
-as $$
-declare
-  me        santa_participants%rowtype;
-  receiver  text;
-  max_tries constant integer := 5;
-begin
-  select * into me from santa_participants where name = p_name for update;
-  if not found then
-    return json_build_object('ok', false, 'error', 'NOT_FOUND');
-  end if;
-  if me.claimed_at is null or me.pin_hash is null then
-    return json_build_object('ok', false, 'error', 'NOT_CLAIMED');
-  end if;
-  if me.locked_until is not null and me.locked_until > now() then
-    return json_build_object('ok', false, 'error', 'LOCKED',
-      'retry_in', ceil(extract(epoch from me.locked_until - now())));
-  end if;
-
-  if p_pin is null or p_pin !~ '^[0-9]{4}$'
-     or extensions.crypt(p_pin, me.pin_hash) <> me.pin_hash then
-    if me.failed_attempts + 1 >= max_tries then
-      update santa_participants
-         set failed_attempts = 0, locked_until = now() + interval '15 minutes'
-       where id = me.id;
-      return json_build_object('ok', false, 'error', 'LOCKED', 'retry_in', 900);
-    end if;
-    update santa_participants set failed_attempts = me.failed_attempts + 1 where id = me.id;
-    return json_build_object('ok', false, 'error', 'WRONG_PIN',
-      'attempts_left', max_tries - me.failed_attempts - 1);
-  end if;
-
-  update santa_participants set failed_attempts = 0, locked_until = null where id = me.id;
-
-  select r.name into receiver
-    from santa_assignments a
-    join santa_participants r on r.id = a.receiver_id
-   where a.giver_id = me.id;
-
-  return json_build_object('ok', true, 'receiver', receiver);
+  return json_build_object('ok', true, 'giver', me.name, 'receiver', receiver,
+                           'first_time', me.claimed_at is null);
 end;
 $$;
 
@@ -229,20 +206,19 @@ set search_path = public
 as $$
 begin
   delete from santa_assignments;
-  update santa_participants
-     set claimed_at = null, pin_hash = null, failed_attempts = 0, locked_until = null;
+  update santa_participants set claimed_at = null;
 end;
 $$;
 
 -- -----------------------------------------------------------------------------
 --  Permessi sulle funzioni
 -- -----------------------------------------------------------------------------
-revoke all on function public._santa_ensure_draw()               from public, anon, authenticated;
-revoke all on function public.reset_secret_santa()               from public, anon, authenticated;
-revoke all on function public.get_secret_santa_status()          from public;
-revoke all on function public.claim_secret_santa(text, text)     from public;
-revoke all on function public.reveal_secret_santa(text, text)    from public;
+revoke all on function public._santa_ensure_draw()                    from public, anon, authenticated;
+revoke all on function public.reset_secret_santa()                    from public, anon, authenticated;
+revoke all on function public.get_secret_santa_status()               from public;
+revoke all on function public.check_secret_santa_email(text, text)    from public;
+revoke all on function public.my_secret_santa()                       from public, anon;
 
-grant execute on function public.get_secret_santa_status()       to anon, authenticated;
-grant execute on function public.claim_secret_santa(text, text)  to anon, authenticated;
-grant execute on function public.reveal_secret_santa(text, text) to anon, authenticated;
+grant execute on function public.get_secret_santa_status()            to anon, authenticated;
+grant execute on function public.check_secret_santa_email(text, text) to anon, authenticated;
+grant execute on function public.my_secret_santa()                    to authenticated;

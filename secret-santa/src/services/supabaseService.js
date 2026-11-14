@@ -1,39 +1,70 @@
 /**
- * Servizio di produzione: parla con Supabase tramite le sole funzioni RPC
- * esposte (PostgREST). Nessuna dipendenza: bastano fetch e la anon key.
- * Il browser non riceve MAI l'elenco delle coppie: solo il proprio destinatario.
+ * Servizio di produzione: Supabase (Auth via codice email + RPC PostgREST).
+ * Nessuna dipendenza: bastano fetch e la anon key.
+ *
+ * Flusso: checkEmail (nome ↔ email) → sendCode (Supabase invia il codice) →
+ * reveal (verifica il codice, ottiene un token e chiede SOLO il proprio nome).
+ * Il token resta in memoria il tempo di una richiesta: non viene salvato,
+ * così su un telefono condiviso nessuno può riaprire la sessione di un altro.
  */
 export function createSupabaseService(url, anonKey) {
   const base = url.replace(/\/+$/, '');
+  const headers = (token = anonKey) => ({
+    apikey: anonKey,
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  });
 
-  async function rpc(fn, body = {}) {
-    let res;
+  async function post(path, body, token) {
     try {
-      res = await fetch(`${base}/rest/v1/rpc/${fn}`, {
+      const res = await fetch(`${base}${path}`, {
         method: 'POST',
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
+        headers: headers(token),
+        body: JSON.stringify(body ?? {}),
         cache: 'no-store',
       });
+      const data = await res.json().catch(() => ({}));
+      return { status: res.status, ok: res.ok, data };
     } catch {
-      return { ok: false, error: 'NETWORK' };
+      return { status: 0, ok: false, data: null };
     }
-    if (!res.ok) return { ok: false, error: 'SERVER' };
-    return res.json();
   }
 
   return {
     mode: 'supabase',
+
     async getStatus() {
-      const data = await rpc('get_secret_santa_status');
-      if (!Array.isArray(data)) throw new Error(data?.error || 'SERVER');
-      return data;
+      const r = await post('/rest/v1/rpc/get_secret_santa_status');
+      if (!r.ok || !Array.isArray(r.data)) throw new Error('SERVER');
+      return r.data;
     },
-    claim: (name, pin) => rpc('claim_secret_santa', { p_name: name, p_pin: pin }),
-    reveal: (name, pin) => rpc('reveal_secret_santa', { p_name: name, p_pin: pin }),
+
+    async checkEmail(name, email) {
+      const r = await post('/rest/v1/rpc/check_secret_santa_email', { p_name: name, p_email: email });
+      if (r.status === 0) return { ok: false, error: 'NETWORK' };
+      if (!r.ok) return { ok: false, error: 'SERVER' };
+      return r.data?.ok ? { ok: true } : { ok: false, error: 'EMAIL_MISMATCH' };
+    },
+
+    async sendCode(email) {
+      const r = await post('/auth/v1/otp', { email: email.trim().toLowerCase(), create_user: true });
+      if (r.ok) return { ok: true };
+      if (r.status === 0) return { ok: false, error: 'NETWORK' };
+      if (r.status === 429) return { ok: false, error: 'RATE_LIMIT' };
+      return { ok: false, error: 'SEND_FAILED' };
+    },
+
+    async reveal(name, email, code) {
+      const v = await post('/auth/v1/verify', { type: 'email', email: email.trim().toLowerCase(), token: code });
+      if (v.status === 0) return { ok: false, error: 'NETWORK' };
+      if (v.status === 429) return { ok: false, error: 'RATE_LIMIT' };
+      const token = v.data?.access_token;
+      if (!v.ok || !token) return { ok: false, error: 'INVALID_CODE' };
+
+      const r = await post('/rest/v1/rpc/my_secret_santa', {}, token);
+      if (!r.ok || !r.data) return { ok: false, error: r.status === 0 ? 'NETWORK' : 'SERVER' };
+      if (r.data.ok && r.data.giver !== name) return { ok: false, error: 'EMAIL_MISMATCH' };
+      return r.data;
+    },
   };
 }

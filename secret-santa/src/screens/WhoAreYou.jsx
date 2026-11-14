@@ -3,7 +3,7 @@ import { Holly } from '../components/Ornaments.jsx';
 
 /** Griglia di selezione del proprio nome. */
 export default function WhoAreYou({
-  status, loading, loadError, selected, notice, demo,
+  status, loading, loadError, selected, demo,
   onSelect, onSelectClaimed, onReveal, onBack, onRetry, onResetDemo,
 }) {
   const claimedCount = status.filter((p) => p.claimed).length;
@@ -27,8 +27,6 @@ export default function WhoAreYou({
         <p className="who-subtitle">Tocca il tuo nome per scoprire chi dovrai sorprendere.</p>
       </div>
 
-      {notice && <p className="notice" role="status">{notice}</p>}
-
       {loadError ? (
         <div className="load-error">
           <p>{loadError}</p>
@@ -46,7 +44,7 @@ export default function WhoAreYou({
                   className={`name-card paper ${isSel ? 'is-selected' : ''} ${p.claimed ? 'is-claimed' : ''}`}
                   onClick={() => (p.claimed ? onSelectClaimed(p.name) : onSelect(p.name))}
                   aria-pressed={isSel}
-                  aria-label={p.claimed ? `${p.name}, ha già pescato. Tocca per rivedere con il PIN` : p.name}
+                  aria-label={p.claimed ? `${p.name}, ha già pescato. Tocca per rivedere il nome con la tua email` : p.name}
                 >
                   <Holly className="card-holly" size={22} />
                   <span className="seal">{p.name[0]}</span>

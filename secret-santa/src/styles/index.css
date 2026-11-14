@@ -609,37 +609,56 @@ h1, h2, p { margin: 0; }
 .sheet-hint { font-size: 0.74rem; color: #8a7663; }
 .sheet-error { min-height: 1.3em; font-size: 0.84rem; font-weight: 600; color: var(--burgundy); }
 
-.pin { position: relative; display: flex; gap: 12px; margin: 10px 0 0; }
-.pin-input {
+
+/* campi email / codice */
+.sheet-back {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
   border: 0;
-  font-size: 16px; /* evita lo zoom automatico di iOS */
-  caret-color: transparent;
-  z-index: 1;
-}
-.pin-box {
-  width: 52px;
-  height: 60px;
-  border-radius: 14px;
-  background: #fffaf0;
-  box-shadow: inset 0 0 0 1.5px rgba(176, 140, 74, 0.55);
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  transition: box-shadow 0.2s, transform 0.2s var(--ease-spring);
+  background: transparent;
+  color: var(--brown);
 }
-.pin-box.filled::after {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--burgundy);
-  animation: pop-in 0.25s var(--ease-spring);
+.text-input {
+  width: 100%;
+  max-width: 340px;
+  height: 56px;
+  margin-top: 10px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  font-family: var(--font-sans);
+  font-size: 16px; /* evita lo zoom automatico di iOS */
+  color: var(--ink);
+  text-align: center;
+  background: #fffaf0;
+  box-shadow: inset 0 0 0 1.5px rgba(176, 140, 74, 0.55);
+  transition: box-shadow 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.pin:focus-within .pin-box.active { box-shadow: inset 0 0 0 2px var(--burgundy), 0 0 0 4px rgba(142, 38, 56, 0.12); transform: translateY(-2px); }
+.text-input::placeholder { color: #b9a68c; }
+.text-input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--burgundy), 0 0 0 4px rgba(142, 38, 56, 0.12); }
+.code-input {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  letter-spacing: 0.4em;
+  font-variant-numeric: lining-nums tabular-nums;
+  padding-left: calc(18px + 0.4em);
+}
+.sheet-text strong { color: var(--forest); font-weight: 600; }
+.demo-code {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--forest);
+  background: rgba(214, 184, 121, 0.3);
+}
 
 /* ============================== RIVELAZIONE =============================== */
 .reveal { justify-content: center; }
