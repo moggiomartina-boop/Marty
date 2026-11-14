@@ -54,6 +54,14 @@ export default function WhoAreYou({
         </ol>
       )}
 
+      {demo && (
+        <p className="demo-banner" role="note">
+          <strong>Versione di prova.</strong> Le iscrizioni restano salvate solo su questo
+          dispositivo: gli altri telefoni non le vedono. Per giocare ognuno dal proprio
+          telefono serve la versione online.
+        </p>
+      )}
+
       {notice && <p className="notice" role="status">{notice}</p>}
 
       {loadError ? (
@@ -87,7 +95,6 @@ export default function WhoAreYou({
       )}
 
       <div className="who-footer">
-        {demo && <p className="demo-note">Modalità demo · tutto è salvato solo su questo dispositivo.</p>}
         <button type="button" className="org-link" onClick={onOrganizer}>
           <Crown size={13} /> Area organizzatrice
         </button>

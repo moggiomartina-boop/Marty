@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview --host",
     "verify:draw": "node scripts/verify-draw.mjs",
-    "build:single": "vite build && node scripts/build-single.mjs"
+    "build:single": "vite build && node scripts/build-single.mjs",
+    "build:pages": "vite build && node scripts/build-single.mjs ../docs/index.html"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",

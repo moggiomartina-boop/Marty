@@ -1,10 +1,11 @@
 /**
  * Crea un unico file HTML autonomo (JS, CSS e icona incorporati) da dist/.
- * Uso: npm run build:single  →  secret-santa.html
+ * Uso: npm run build:single           →  secret-santa.html
+ *      npm run build:pages            →  ../docs/index.html (sito GitHub Pages)
  * Senza variabili Supabase il file funziona in MODALITÀ DEMO (un solo dispositivo).
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 const dist = 'dist';
 let html = readFileSync(join(dist, 'index.html'), 'utf8');
@@ -19,5 +20,8 @@ const icon = `data:image/svg+xml;base64,${readFileSync(join(dist, 'favicon.svg')
 html = html.replaceAll('./favicon.svg', icon);
 
 if (/src="\.\/assets|href="\.\/assets/.test(html)) throw new Error('Risorse non incorporate');
-writeFileSync('secret-santa.html', html);
-console.log(`✓ secret-santa.html (${(html.length / 1024).toFixed(0)} KB)`);
+const out = process.argv[2] || 'secret-santa.html';
+mkdirSync(dirname(out), { recursive: true });
+writeFileSync(out, html);
+const online = /supabase\.co/.test(html) ? 'collegato a Supabase' : 'MODALITÀ DEMO';
+console.log(`✓ ${out} (${(html.length / 1024).toFixed(0)} KB, ${online})`);
