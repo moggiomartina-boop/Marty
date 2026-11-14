@@ -1,13 +1,28 @@
-import { ArrowLeft, Check, Lock, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Gift, RotateCcw } from 'lucide-react';
 import { Holly } from '../components/Ornaments.jsx';
 
-/** Griglia di selezione del proprio nome. */
+/**
+ * Griglia dei nomi. Due fasi:
+ * - "registration": si sceglie il proprio nome e ci si iscrive
+ * - "drawn": si sceglie il proprio nome e si scopre il destinatario con il PIN
+ */
 export default function WhoAreYou({
-  status, loading, loadError, selected, demo,
-  onSelect, onSelectClaimed, onReveal, onBack, onRetry, onResetDemo,
+  status, loading, loadError, selected, notice, demo,
+  onSelect, onAction, onBack, onRetry, onOrganizer,
 }) {
-  const claimedCount = status.filter((p) => p.claimed).length;
-  const total = status.length || 8;
+  const drawn = status.phase === 'drawn';
+  const people = status.participants;
+  const total = people.length || 8;
+  const count = people.filter((p) => (drawn ? p.revealed : p.registered)).length;
+
+  const cardState = (p, isSel) => {
+    if (drawn) {
+      if (isSel) return <><Check size={12} /> Sei tu</>;
+      return p.revealed ? <><Gift size={11} /> Ha scoperto</> : 'Tocca per scoprire';
+    }
+    if (p.registered) return <><Check size={12} /> Iscritto</>;
+    return isSel ? <><Check size={12} /> Sei tu</> : 'Tocca per iscriverti';
+  };
 
   return (
     <main className="screen who">
@@ -16,16 +31,30 @@ export default function WhoAreYou({
           <ArrowLeft size={20} />
         </button>
         <span className="progress-pill" aria-live="polite">
-          <span className="progress-bar"><span style={{ width: `${(claimedCount / total) * 100}%` }} /></span>
-          {claimedCount}/{total} hanno pescato
+          <span className="progress-bar"><span style={{ width: `${(count / total) * 100}%` }} /></span>
+          {count}/{total} {drawn ? 'hanno scoperto' : 'iscritti'}
         </span>
       </header>
 
       <div className="who-intro">
-        <p className="script kicker">Ho ho ho…</p>
+        <p className="script kicker">{drawn ? 'L’estrazione è aperta!' : 'Ho ho ho…'}</p>
         <h1 className="who-title">Chi sei?</h1>
-        <p className="who-subtitle">Tocca il tuo nome per scoprire chi dovrai sorprendere.</p>
+        <p className="who-subtitle">
+          {drawn
+            ? 'Tocca il tuo nome per scoprire chi dovrai sorprendere.'
+            : 'Tocca il tuo nome per iscriverti. L’estrazione partirà quando ci saremo tutti.'}
+        </p>
       </div>
+
+      {!drawn && people.length > 0 && (
+        <ol className="steps" aria-label="Come funziona">
+          <li className="is-active"><span>1</span> Iscriviti</li>
+          <li><span>2</span> Avvio</li>
+          <li><span>3</span> Scopri</li>
+        </ol>
+      )}
+
+      {notice && <p className="notice" role="status">{notice}</p>}
 
       {loadError ? (
         <div className="load-error">
@@ -34,24 +63,22 @@ export default function WhoAreYou({
         </div>
       ) : (
         <ul className="name-grid" aria-busy={loading}>
-          {(loading && !status.length ? Array.from({ length: 8 }, (_, i) => ({ name: '', claimed: false, i })) : status).map((p, i) => {
+          {(!people.length ? Array.from({ length: 8 }, () => null) : people).map((p, i) => {
+            if (!p) return <li key={i} className="name-card skeleton" />;
             const isSel = selected === p.name;
-            if (!p.name) return <li key={i} className="name-card skeleton" />;
+            const done = drawn ? p.revealed : p.registered;
             return (
               <li key={p.name} style={{ animationDelay: `${i * 60}ms` }} className="name-cell">
                 <button
                   type="button"
-                  className={`name-card paper ${isSel ? 'is-selected' : ''} ${p.claimed ? 'is-claimed' : ''}`}
-                  onClick={() => (p.claimed ? onSelectClaimed(p.name) : onSelect(p.name))}
+                  className={`name-card paper ${isSel ? 'is-selected' : ''} ${done && !isSel ? 'is-done' : ''}`}
+                  onClick={() => onSelect(p)}
                   aria-pressed={isSel}
-                  aria-label={p.claimed ? `${p.name}, ha già pescato. Tocca per rivedere il nome con la tua email` : p.name}
                 >
                   <Holly className="card-holly" size={22} />
                   <span className="seal">{p.name[0]}</span>
                   <span className="card-name">{p.name}</span>
-                  <span className="card-state">
-                    {p.claimed ? <><Lock size={11} /> Già pescato</> : isSel ? <><Check size={12} /> Sei tu</> : 'Tocca per scegliere'}
-                  </span>
+                  <span className="card-state">{cardState(p, isSel)}</span>
                 </button>
               </li>
             );
@@ -59,16 +86,16 @@ export default function WhoAreYou({
         </ul>
       )}
 
-      {demo && (
-        <p className="demo-note">
-          Modalità demo · l’estrazione è salvata solo su questo dispositivo.{' '}
-          <button type="button" className="link-btn" onClick={onResetDemo}>Azzera</button>
-        </p>
-      )}
+      <div className="who-footer">
+        {demo && <p className="demo-note">Modalità demo · tutto è salvato solo su questo dispositivo.</p>}
+        <button type="button" className="org-link" onClick={onOrganizer}>
+          <Crown size={13} /> Area organizzatrice
+        </button>
+      </div>
 
       <div className={`cta-dock ${selected ? 'is-visible' : ''}`}>
-        <button type="button" className="btn btn-primary btn-block" onClick={onReveal} tabIndex={selected ? 0 : -1}>
-          Scopri chi devi sorprendere
+        <button type="button" className="btn btn-primary btn-block" onClick={onAction} tabIndex={selected ? 0 : -1}>
+          {drawn ? 'Scopri chi devi sorprendere' : 'Iscriviti'}
         </button>
       </div>
     </main>

@@ -14,7 +14,7 @@ export default function Farewell({ allDone, onNext }) {
       <p className="farewell-text">
         Mi raccomando, non dire a nessuno chi hai pescato! 🤫
         <br />
-        Se lo dimentichi, tocca il tuo nome e rientra con la tua email.
+        Se lo dimentichi, tocca il tuo nome e inserisci di nuovo il tuo PIN.
       </p>
       {allDone ? (
         <p className="all-done">Tutti gli 8 elfi hanno pescato. Che i regali abbiano inizio! 🎄</p>

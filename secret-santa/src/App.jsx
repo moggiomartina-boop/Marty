@@ -1,34 +1,47 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Snow from './components/Snow.jsx';
 import StringLights from './components/StringLights.jsx';
 import MusicToggle from './components/MusicToggle.jsx';
-import AuthSheet from './components/AuthSheet.jsx';
+import PinSheet from './components/PinSheet.jsx';
+import OrganizerSheet from './components/OrganizerSheet.jsx';
 import Footer from './components/Footer.jsx';
 import Home from './screens/Home.jsx';
 import WhoAreYou from './screens/WhoAreYou.jsx';
+import Registered from './screens/Registered.jsx';
 import Reveal from './screens/Reveal.jsx';
 import Farewell from './screens/Farewell.jsx';
-import { drawService } from './services/drawService.js';
+import { drawService, errorMessage } from './services/drawService.js';
+import { DEMO_ORGANIZER_CODE } from './services/localService.js';
 import { startMusic, stopMusic } from './audio/musicEngine.js';
 
 const MUSIC_PREF = 'secret-santa-music';
 const readPref = () => { try { return localStorage.getItem(MUSIC_PREF); } catch { return null; } };
 const writePref = (v) => { try { localStorage.setItem(MUSIC_PREF, v); } catch { /* ignora */ } };
 
+const EMPTY = { phase: 'registration', participants: [] };
+
 /**
- * Flusso: home → chi sei? → email + codice → rivelazione → segreto custodito.
- * Lo stato dell'estrazione vive sul server; qui teniamo solo lo stato della UI.
+ * Flusso
+ *  Fase 1 (iscrizione):  home → chi sei? → PIN → iscritto
+ *  Fase 2 (estrazione):  home → chi sei? → PIN → rivelazione → segreto custodito
+ * Lo stato vive sul server; qui teniamo solo lo stato della UI.
  * Il destinatario resta in memoria solo durante la rivelazione.
  */
 export default function App() {
   const [screen, setScreen] = useState('home');
-  const [status, setStatus] = useState([]);
+  const [status, setStatus] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [selected, setSelected] = useState(null);
-  const [sheet, setSheet] = useState(null);          // { name, claimed }
+  const [sheet, setSheet] = useState(null);          // { mode: 'register'|'reveal', name }
+  const [sheetError, setSheetError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [organizerOpen, setOrganizerOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [registeredName, setRegisteredName] = useState('');
   const [result, setResult] = useState(null);        // { giver, receiver, replay }
   const [playing, setPlaying] = useState(false);
+  const noticeTimer = useRef(0);
 
   /* ---------------------------------- dati --------------------------------- */
   const refresh = useCallback(async () => {
@@ -43,13 +56,22 @@ export default function App() {
     }
   }, []);
 
-  // aggiornamento periodico mentre si sceglie il nome (vede chi ha già pescato)
+  // aggiornamento periodico mentre si sceglie il nome (iscritti, avvio, ecc.)
   useEffect(() => {
     if (screen !== 'who') return undefined;
     refresh();
-    const id = setInterval(refresh, 10000);
+    const id = setInterval(refresh, 8000);
     return () => clearInterval(id);
   }, [screen, refresh]);
+
+  // se la fase cambia mentre un nome è selezionato, si riparte puliti
+  useEffect(() => { setSelected(null); }, [status.phase]);
+
+  const flash = (msg) => {
+    setNotice(msg);
+    clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(''), 7000);
+  };
 
   /* --------------------------------- musica -------------------------------- */
   const toggleMusic = async () => {
@@ -64,39 +86,66 @@ export default function App() {
   };
 
   /* --------------------------------- azioni -------------------------------- */
+  const go = (s) => { setScreen(s); window.scrollTo(0, 0); };
+
   const start = async () => {
-    setScreen('who');
-    window.scrollTo(0, 0);
+    go('who');
     // il click è un gesto dell'utente: la musica può partire (se non disattivata)
     if (!playing && readPref() !== 'off') setPlaying(await startMusic());
   };
 
-  const openSheet = (name, claimed) => setSheet({ name, claimed });
+  const selectPerson = (p) => {
+    setNotice('');
+    if (status.phase === 'registration' && p.registered) {
+      setSelected(null);
+      flash(`${p.name} è già iscritto. Se non sei stato tu, avvisa subito l’organizzatrice: potrà liberare il nome.`);
+      return;
+    }
+    setSelected((s) => (s === p.name ? null : p.name));
+  };
 
-  // identità confermata dal codice email: mostra la rivelazione
-  const onRevealed = (res) => {
-    setSheet(null);
-    setSelected(null);
-    setResult({ giver: res.giver, receiver: res.receiver, replay: !res.first_time });
-    setScreen('reveal');
-    window.scrollTo(0, 0);
+  const openSheet = () => {
+    if (!selected) return;
+    setSheetError('');
+    setSheet({ mode: status.phase === 'drawn' ? 'reveal' : 'register', name: selected });
+  };
+
+  const submitPin = async (pin) => {
+    const { mode, name } = sheet;
+    setBusy(true);
+    const res = mode === 'register' ? await drawService.register(name, pin) : await drawService.reveal(name, pin);
+    setBusy(false);
+
+    if (res?.ok) {
+      setSheet(null);
+      setSelected(null);
+      if (mode === 'register') {
+        setRegisteredName(name);
+        go('registered');
+      } else {
+        setResult({ giver: name, receiver: res.receiver, replay: !res.first_time });
+        go('reveal');
+      }
+      return;
+    }
+    // la fase o lo stato sono cambiati nel frattempo: chiudo e aggiorno
+    if (['ALREADY_REGISTERED', 'DRAW_STARTED', 'NOT_STARTED'].includes(res?.error)) {
+      setSheet(null);
+      setSelected(null);
+      flash(errorMessage(res));
+      refresh();
+      return;
+    }
+    setSheetError(errorMessage(res));
   };
 
   const finishReveal = () => {
     setResult(null); // il nome sparisce dalla memoria e dallo schermo
-    setScreen('done');
+    go('done');
     refresh();
   };
 
-  const resetDemo = () => {
-    if (window.confirm('Azzerare l’estrazione demo su questo dispositivo?')) {
-      drawService.reset?.();
-      setSelected(null);
-      refresh();
-    }
-  };
-
-  const allDone = status.length > 0 && status.every((p) => p.claimed);
+  const allDone = status.phase === 'drawn' && status.participants.every((p) => p.revealed);
 
   return (
     <div className={`app app--${screen}`}>
@@ -112,28 +161,40 @@ export default function App() {
             loading={loading}
             loadError={loadError}
             selected={selected}
+            notice={notice}
             demo={drawService.mode === 'demo'}
-            onSelect={(n) => setSelected((s) => (s === n ? null : n))}
-            onSelectClaimed={(n) => { setSelected(null); openSheet(n, true); }}
-            onReveal={() => selected && openSheet(selected, false)}
-            onBack={() => setScreen('home')}
+            onSelect={selectPerson}
+            onAction={openSheet}
+            onBack={() => go('home')}
             onRetry={refresh}
-            onResetDemo={resetDemo}
+            onOrganizer={() => { setSelected(null); setOrganizerOpen(true); }}
           />
         )}
+        {screen === 'registered' && <Registered name={registeredName} onBack={() => go('who')} />}
         {screen === 'reveal' && result && (
           <Reveal giver={result.giver} receiver={result.receiver} replay={result.replay} onDone={finishReveal} />
         )}
-        {screen === 'done' && <Farewell allDone={allDone} onNext={() => setScreen('who')} />}
+        {screen === 'done' && <Farewell allDone={allDone} onNext={() => go('who')} />}
         <Footer />
       </div>
 
       {sheet && (
-        <AuthSheet
+        <PinSheet
           name={sheet.name}
-          claimed={sheet.claimed}
-          onRevealed={onRevealed}
-          onClose={() => setSheet(null)}
+          mode={sheet.mode}
+          error={sheetError}
+          busy={busy}
+          onSubmit={submitPin}
+          onClose={() => !busy && setSheet(null)}
+        />
+      )}
+
+      {organizerOpen && (
+        <OrganizerSheet
+          status={status}
+          demoCode={drawService.mode === 'demo' ? DEMO_ORGANIZER_CODE : ''}
+          onChanged={refresh}
+          onClose={() => setOrganizerOpen(false)}
         />
       )}
 
