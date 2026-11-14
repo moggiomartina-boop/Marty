@@ -8,7 +8,8 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "verify:draw": "node scripts/verify-draw.mjs"
+    "verify:draw": "node scripts/verify-draw.mjs",
+    "build:single": "vite build && node scripts/build-single.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",

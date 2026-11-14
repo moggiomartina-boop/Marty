@@ -87,6 +87,12 @@ supabase/
 
 ## 4. Avvio in locale
 
+**Il modo più semplice:** apri `secret-santa.html` con un doppio clic. È un
+unico file con tutto dentro, e funziona in **modalità demo** (vedi §6).
+Per rigenerarlo dopo una modifica: `npm run build:single`.
+
+Per sviluppare:
+
 ```bash
 cd secret-santa
 npm install
