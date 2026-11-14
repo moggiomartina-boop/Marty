@@ -1,0 +1,3 @@
+Metti qui un file audio natalizio ROYALTY-FREE (es. christmas.mp3)
+e imposta in .env.local:  VITE_MUSIC_URL=./music/christmas.mp3
+Senza file, l'app suona una composizione originale sintetizzata.

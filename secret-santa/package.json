@@ -1,0 +1,22 @@
+{
+  "name": "secret-santa-christmas-draw",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Secret Santa – The Christmas Draw: estrazione natalizia interattiva, mobile first.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "verify:draw": "node scripts/verify-draw.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^7.0.0"
+  }
+}
