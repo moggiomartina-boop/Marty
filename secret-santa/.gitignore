@@ -3,3 +3,4 @@ dist
 .env.local
 .env.*.local
 netlify
+secret-santa-netlify.zip
