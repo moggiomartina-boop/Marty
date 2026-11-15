@@ -5,17 +5,17 @@
  */
 export function createSupabaseService(url, anonKey) {
   const base = url.replace(/\/+$/, '');
+  // Chiavi "anon" classiche (JWT, iniziano con eyJ) vanno anche in Authorization;
+  // le nuove chiavi "publishable" (sb_publishable_…) solo nell'header apikey.
+  const headers = { apikey: anonKey, 'Content-Type': 'application/json' };
+  if (anonKey.startsWith('eyJ')) headers.Authorization = `Bearer ${anonKey}`;
 
   async function rpc(fn, body = {}) {
     let res;
     try {
       res = await fetch(`${base}/rest/v1/rpc/${fn}`, {
         method: 'POST',
-        headers: {
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(body),
         cache: 'no-store',
       });
