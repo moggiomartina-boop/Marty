@@ -10,7 +10,7 @@
     "preview": "vite preview --host",
     "verify:draw": "node scripts/verify-draw.mjs",
     "build:single": "vite build && node scripts/build-single.mjs",
-    "build:pages": "vite build && node scripts/build-single.mjs ../docs/index.html"
+    "build:netlify": "vite build && node scripts/build-single.mjs netlify/index.html && cd netlify && rm -f ../secret-santa-netlify.zip && zip -q ../secret-santa-netlify.zip index.html && echo ✓ secret-santa-netlify.zip"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",

@@ -1,7 +1,7 @@
 /**
  * Crea un unico file HTML autonomo (JS, CSS e icona incorporati) da dist/.
  * Uso: npm run build:single           →  secret-santa.html
- *      npm run build:pages            →  ../docs/index.html (sito GitHub Pages)
+ *      npm run build:netlify          →  secret-santa-netlify.zip (da trascinare su Netlify Drop)
  * Senza variabili Supabase il file funziona in MODALITÀ DEMO (un solo dispositivo).
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
